@@ -1,0 +1,1546 @@
+:root {
+  --bg: #19212d;
+  --bg2: #111722;
+  --card: #f3d18d;
+  --cream: #ffe2a8;
+  --red: #ec2b1f;
+  --red2: #b81714;
+  --ink: #111722;
+  --muted: #b8b9bd;
+  --white: #fff7e8;
+  --line: rgba(255, 226, 168, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #263447 0%, var(--bg) 45%, var(--bg2) 100%);
+  color: var(--white);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 2px solid rgba(17, 23, 34, 0.12);
+  border-radius: 14px;
+  padding: 13px 14px;
+  background: #fff8e8;
+  color: var(--ink);
+  outline: none;
+}
+
+textarea {
+  min-height: 180px;
+  resize: vertical;
+}
+
+label {
+  display: block;
+  margin: 14px 0 7px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.app {
+  position: relative;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.bg-board {
+  position: fixed;
+  inset: auto -120px -160px auto;
+  width: 520px;
+  height: 520px;
+  opacity: 0.08;
+  transform: rotate(12deg);
+  background-image:
+    linear-gradient(45deg, #fff 25%, transparent 25%),
+    linear-gradient(-45deg, #fff 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #fff 75%),
+    linear-gradient(-45deg, transparent 75%, #fff 75%);
+  background-size: 80px 80px;
+  background-position: 0 0, 0 40px, 40px -40px, -40px 0px;
+  pointer-events: none;
+}
+
+.hero {
+  border: 3px solid var(--line);
+  border-radius: 28px;
+  padding: 30px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(236, 43, 31, 0.16), transparent 45%),
+    linear-gradient(120deg, rgba(243, 209, 141, 0.14), transparent 55%);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--cream);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 900;
+}
+
+h1 {
+  font-size: clamp(2.6rem, 7vw, 5.8rem);
+  line-height: 0.9;
+  margin: 0;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.primary,
+.ghost,
+.danger {
+  min-height: 46px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.primary {
+  background: var(--red);
+  color: white;
+  box-shadow: 0 12px 0 var(--red2), 0 18px 35px rgba(0, 0, 0, 0.25);
+}
+
+.ghost {
+  background: rgba(255, 226, 168, 0.12);
+  color: var(--cream);
+  border: 2px solid var(--line);
+}
+
+.danger {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.full {
+  width: 100%;
+}
+
+.stats {
+  margin: 22px 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.stat {
+  background: #fff0bf;
+  color: var(--ink);
+  border-radius: 22px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  align-items: center;
+  border-bottom: 7px solid var(--red);
+}
+
+.stat svg {
+  grid-row: span 2;
+}
+
+.stat span {
+  color: #5f4b2a;
+  font-weight: 800;
+}
+
+.stat strong {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+  overflow-x: auto;
+}
+
+.tabs button {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  padding: 13px 18px;
+  white-space: nowrap;
+  border: 2px solid transparent;
+}
+
+.tabs button.active {
+  background: var(--cream);
+  color: var(--ink);
+  border-color: var(--red);
+}
+
+.grid.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.panel {
+  background: linear-gradient(180deg, #f8d99b, #efc477);
+  color: var(--ink);
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+  border: 4px solid rgba(255, 255, 255, 0.25);
+}
+
+.panel.wide {
+  grid-column: 1 / -1;
+}
+
+.panel h2 {
+  margin: 0 0 16px;
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hint {
+  color: #684f25;
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.turn-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.7fr auto;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+}
+
+.empty {
+  border: 3px dashed rgba(17, 23, 34, 0.18);
+  padding: 35px;
+  border-radius: 20px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.matches {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.match {
+  background: #fff8e8;
+  border: 3px solid rgba(17, 23, 34, 0.08);
+  border-radius: 22px;
+  padding: 16px;
+}
+
+.match.done {
+  border-color: rgba(45, 128, 77, 0.5);
+}
+
+.match-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.match-top span {
+  background: var(--ink);
+  color: var(--cream);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: 900;
+}
+
+.match-top small {
+  color: #6c572f;
+  font-weight: 800;
+}
+
+.versus {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.versus span {
+  background: var(--red);
+  color: white;
+  padding: 8px;
+  border-radius: 999px;
+  font-weight: 1000;
+  font-size: 0.8rem;
+}
+
+.result-buttons {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.result-buttons button {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 11px;
+}
+
+.result {
+  margin: 12px 0 0;
+  font-weight: 1000;
+  color: #24623e;
+}
+
+.bye {
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(236, 43, 31, 0.12);
+  font-size: 1.1rem;
+}
+
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.podium-card {
+  background: var(--ink);
+  color: var(--cream);
+  border-radius: 24px;
+  padding: 22px;
+  text-align: center;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.podium-card span {
+  color: var(--red);
+  font-size: 2rem;
+  font-weight: 1000;
+}
+
+.podium-card strong {
+  font-size: 1.35rem;
+}
+
+.podium-card em {
+  font-style: normal;
+  margin-top: 8px;
+  font-weight: 900;
+}
+
+.pos-1 {
+  transform: translateY(-8px);
+  background: linear-gradient(180deg, #fff5c8, #111722);
+  color: white;
+}
+
+.pos-1 span {
+  color: #ffd15a;
+}
+
+.ranking-list {
+  display: grid;
+  gap: 8px;
+}
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 100px 140px;
+  align-items: center;
+  gap: 10px;
+  background: #fff8e8;
+  border-radius: 16px;
+  padding: 13px 15px;
+  font-weight: 900;
+}
+
+.rank-row small {
+  color: #6c572f;
+  font-weight: 800;
+}
+
+.table {
+  overflow-x: auto;
+}
+
+.table-row {
+  min-width: 760px;
+  display: grid;
+  grid-template-columns: 90px 80px 140px 1fr 120px;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(17, 23, 34, 0.14);
+  font-weight: 800;
+}
+
+.table-row.head {
+  background: var(--ink);
+  color: var(--cream);
+  border-radius: 14px;
+  border-bottom: 0;
+  font-weight: 1000;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stats,
+  .grid.two,
+  .matches,
+  .podium {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-row {
+    grid-template-columns: 50px 1fr;
+  }
+
+  .rank-row span:nth-child(3),
+  .rank-row small {
+    grid-column: 2;
+  }
+}
+
+/* Área do botão Importar alunos */
+.import-area {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+  padding-bottom: 8px;
+}
+
+.import-area .primary {
+  min-height: 58px;
+  box-shadow: 0 8px 0 var(--red2), 0 12px 22px rgba(0, 0, 0, 0.22);
+  margin-bottom: 34px;
+}
+
+.import-hint {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(17, 23, 34, 0.08);
+  display: block;
+  position: relative;
+  z-index: 2;
+}
+
+/* Selo de última rodada */
+.last-round-badge {
+  margin-left: 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--red);
+  color: white;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.finished-badge {
+  background: var(--ink);
+  color: var(--cream);
+  border-radius: 16px;
+  padding: 14px 18px;
+  font-weight: 1000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Select dos turnos */
+.turn-row select {
+  width: 100%;
+  height: 64px;
+  border: 2px solid rgba(17, 23, 34, 0.12);
+  border-radius: 16px;
+  padding: 0 48px 0 18px;
+
+  background-color: #fff8e8 !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #111722 50%),
+    linear-gradient(135deg, #111722 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 22px) 28px,
+    calc(100% - 16px) 28px !important;
+  background-size: 7px 7px, 7px 7px !important;
+  background-repeat: no-repeat !important;
+
+  color: var(--ink);
+  outline: none;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.turn-row select,
+.turn-row input,
+.turn-row button {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+}
+
+.turn-row select,
+.turn-row input {
+  font-weight: 500;
+}
+
+.tie-break-panel {
+  margin: 18px 0 22px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(17, 23, 34, 0.1);
+  border: 2px solid rgba(17, 23, 34, 0.12);
+}
+
+.tie-break-panel h3 {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+}
+
+.tie-break-panel p {
+  margin: 0 0 14px;
+  color: #684f25;
+  font-weight: 700;
+}
+
+.tie-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  background: #fff8e8;
+  border-radius: 16px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.tie-group strong {
+  font-weight: 900;
+}
+
+@media (max-width: 900px) {
+  .tie-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+.import-file-button {
+  cursor: pointer;
+}
+
+/* ============================= */
+/* TEMA DO TORNEIO DE CUBO MÁGICO */
+/* ============================= */
+
+.cube-theme {
+  --bg: #6fb7d8;
+  --bg2: #3f7fa4;
+  --card: #f5d76e;
+  --cream: #fff1b8;
+  --red: #e53935;
+  --red2: #9f1d1d;
+  --ink: #15151f;
+  --muted: #31556a;
+  --white: #fff8df;
+  --line: rgba(255, 255, 255, 0.32);
+}
+
+/* Fundo retrô inspirado nas faces do cubo */
+.cube-theme .bg-board {
+  position: fixed;
+  inset: auto -120px -160px auto;
+  width: 540px;
+  height: 540px;
+  opacity: 0.08;
+  transform: rotate(-12deg);
+  pointer-events: none;
+  border-radius: 28px;
+  overflow: hidden;
+
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 18%),
+    linear-gradient(
+      90deg,
+      rgba(229, 57, 53, 0.55) 0 33.333%,
+      rgba(30, 136, 229, 0.55) 33.333% 66.666%,
+      rgba(67, 160, 71, 0.55) 66.666% 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 213, 79, 0.32) 0 33.333%,
+      rgba(255, 255, 255, 0.18) 33.333% 66.666%,
+      rgba(245, 124, 0, 0.32) 66.666% 100%
+    );
+
+  background-size: 84px 84px;
+  box-shadow: inset 0 0 0 3px rgba(16, 16, 22, 0.45);
+}
+
+.cube-theme .bg-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0 26px,
+      rgba(16, 16, 22, 0.50) 26px 29px,
+      transparent 29px 55px,
+      rgba(16, 16, 22, 0.50) 55px 58px,
+      transparent 58px
+    ),
+    linear-gradient(
+      transparent 0 26px,
+      rgba(16, 16, 22, 0.50) 26px 29px,
+      transparent 29px 55px,
+      rgba(16, 16, 22, 0.50) 55px 58px,
+      transparent 58px
+    );
+
+  background-size: 84px 84px;
+}
+
+/* Cabeçalho com sensação de arcade/retrô */
+.cube-theme .hero {
+  background:
+    linear-gradient(135deg, rgba(229, 57, 53, 0.30), transparent 38%),
+    linear-gradient(225deg, rgba(30, 136, 229, 0.28), transparent 42%),
+    linear-gradient(45deg, rgba(67, 160, 71, 0.24), transparent 48%),
+    linear-gradient(180deg, rgba(255, 213, 79, 0.16), transparent 70%);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Título mais forte e divertido */
+.cube-theme h1 {
+  text-shadow:
+    4px 4px 0 rgba(229, 57, 53, 0.55),
+    8px 8px 0 rgba(30, 136, 229, 0.35);
+}
+
+/* Cards principais com amarelo retrô */
+.cube-theme .panel {
+  background:
+    linear-gradient(180deg, #ffe27a, #f4bd42);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Botão principal vermelho do cubo */
+.cube-theme .primary {
+  background: #e53935;
+  color: white;
+  box-shadow:
+    0 12px 0 #9f1d1d,
+    0 18px 35px rgba(0, 0, 0, 0.28);
+}
+
+/* Botões secundários mais coloridos */
+.cube-theme .ghost {
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff1b8;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+/* Estatísticas com cores alternadas do cubo */
+.cube-theme .stat:nth-child(1) {
+  background: #ffe27a;
+  border-bottom-color: #e53935;
+}
+
+.cube-theme .stat:nth-child(2) {
+  background: #7ec8ff;
+  border-bottom-color: #1e88e5;
+}
+
+.cube-theme .stat:nth-child(3) {
+  background: #91e58f;
+  border-bottom-color: #43a047;
+}
+
+.cube-theme .stat:nth-child(4) {
+  background: #ffffff;
+  border-bottom-color: #f57c00;
+}
+
+/* Abas */
+.cube-theme .tabs button.active {
+  background: #ffe27a;
+  color: #15151f;
+  border-color: #e53935;
+}
+
+.cube-theme {
+  background:
+    radial-gradient(circle at top left, rgba(255, 213, 79, 0.35), transparent 30%),
+    radial-gradient(circle at top right, rgba(229, 57, 53, 0.22), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(30, 136, 229, 0.28), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(67, 160, 71, 0.22), transparent 32%),
+    linear-gradient(135deg, #8fd3f4 0%, #6fb7d8 45%, #4f93bc 100%);
+}
+
+/* Cards de partidas/tentativas */
+.cube-theme .match,
+.cube-theme .rank-row,
+.cube-theme .table-row:not(.head) {
+  background: #fff8df;
+}
+
+/* VS / destaque central vira azul */
+.cube-theme .versus span {
+  background: #1e88e5;
+}
+
+/* Botões internos */
+.cube-theme .result-buttons button {
+  background: #15151f;
+  color: #fff1b8;
+}
+
+/* Pódio com pegada colorida */
+.cube-theme .podium-card {
+  background: #15151f;
+  color: #fff1b8;
+}
+
+.cube-theme .podium-card span {
+  color: #ffe27a;
+}
+
+.cube-theme .pos-1 {
+  background:
+    linear-gradient(180deg, #ffe27a, #15151f);
+  color: white;
+}
+
+.cube-theme .pos-2 {
+  background:
+    linear-gradient(180deg, #7ec8ff, #15151f);
+}
+
+.cube-theme .pos-3 {
+  background:
+    linear-gradient(180deg, #91e58f, #15151f);
+}
+
+/* Cabeçalho das tabelas */
+.cube-theme .table-row.head {
+  background: #15151f;
+  color: #fff1b8;
+}
+
+/* Botão de perigo */
+.cube-theme .danger {
+  background: #15151f;
+  color: #fff1b8;
+}
+
+/* Campos */
+.cube-theme input,
+.cube-theme textarea,
+.cube-theme select {
+  background: #fff8df;
+  color: #15151f;
+  border-color: rgba(21, 21, 31, 0.16);
+}
+
+/* Textos auxiliares */
+.cube-theme .hint {
+  color: #5d4413;
+}
+
+/* Padroniza selects gerais do tema cubo */
+.cube-theme select {
+  width: 100%;
+  height: 54px;
+  border: 2px solid rgba(21, 21, 31, 0.16);
+  border-radius: 16px;
+  padding: 0 48px 0 18px;
+
+  background-color: #fff8df !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #15151f 50%),
+    linear-gradient(135deg, #15151f 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 22px) 24px,
+    calc(100% - 16px) 24px !important;
+  background-size: 7px 7px, 7px 7px !important;
+  background-repeat: no-repeat !important;
+
+  color: #15151f;
+  outline: none;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.cube-theme input,
+.cube-theme textarea,
+.cube-theme select {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Ícone flat do cubo mágico */
+.cube-flat-icon {
+  flex-shrink: 0;
+  filter:
+    drop-shadow(3px 4px 0 rgba(229, 57, 53, 0.35))
+    drop-shadow(6px 7px 0 rgba(30, 136, 229, 0.22));
+}
+
+/* Título com ícone */
+.title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Ajuste dos h2 com ícone */
+.cube-theme h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ============================= */
+/* TELA INICIAL */
+/* ============================= */
+
+.home-grid {
+  align-items: stretch;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 255px;
+}
+
+.home-card h2 {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-card .hint {
+  min-height: 50px;
+  margin-bottom: 18px;
+}
+
+.home-card .primary {
+  margin-top: auto;
+}
+
+/* Ícone do xadrez na HomeScreen */
+.home-chess-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+/* ============================= */
+/* TELA INICIAL COM 4 TORNEIOS */
+/* ============================= */
+
+.home-tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 255px;
+}
+
+.home-card h2 {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-card .hint {
+  min-height: 58px;
+  margin-bottom: 18px;
+}
+
+.home-card .primary {
+  margin-top: auto;
+}
+
+/* Ícone do xadrez */
+.home-chess-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+/* Ícone da Torre de Hanoi */
+.home-hanoi-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: transparent;
+}
+
+.home-hanoi-icon::before {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  width: 32px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e53935;
+  box-shadow:
+    0 -9px 0 -1px #ffd54f,
+    0 -18px 0 -2px #1e88e5;
+}
+
+.home-hanoi-icon::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 31px;
+  border-radius: 999px;
+  background: #15151f;
+}
+
+/* Ícone da dama */
+.home-dama-icon {
+  position: relative;
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  color: transparent;
+  border-radius: 10px;
+  background:
+    linear-gradient(45deg, #15151f 25%, transparent 25%),
+    linear-gradient(-45deg, #15151f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #15151f 75%),
+    linear-gradient(-45deg, transparent 75%, #15151f 75%);
+  background-color: #fff8df;
+  background-size: 19px 19px;
+  background-position: 0 0, 0 9.5px, 9.5px -9.5px, -9.5px 0;
+  border: 3px solid #15151f;
+}
+
+.home-dama-icon::after {
+  content: "";
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  right: 3px;
+  bottom: 3px;
+  border-radius: 50%;
+  background: #e53935;
+  border: 2px solid #15151f;
+}
+
+/* Responsivo */
+@media (max-width: 900px) {
+  .home-tournament-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================= */
+/* ÍCONE FLAT TORRE DE HANOI */
+/* ============================= */
+
+.hanoi-flat-icon {
+  flex-shrink: 0;
+  filter:
+    drop-shadow(3px 4px 0 rgba(126, 87, 194, 0.28))
+    drop-shadow(6px 7px 0 rgba(42, 30, 63, 0.18));
+}
+
+/* ============================= */
+/* TEMA TORRE DE HANOI */
+/* ============================= */
+
+.hanoi-theme {
+  --bg: #9d84c7;
+  --bg2: #624b89;
+  --card: #eddcff;
+  --cream: #fff0cc;
+  --red: #b24cc8;
+  --red2: #7b2d92;
+  --ink: #2a1e3f;
+  --muted: #f0e7ff;
+  --white: #fff7e8;
+  --line: rgba(255, 240, 204, 0.26);
+
+  background:
+    radial-gradient(circle at top left, rgba(255, 209, 102, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(178, 76, 200, 0.18), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(79, 195, 247, 0.14), transparent 30%),
+    linear-gradient(135deg, #b59ad8 0%, #8f74bd 45%, #624b89 100%);
+}
+
+/* fundo decorativo */
+.hanoi-theme .bg-board {
+  opacity: 0.12;
+  width: 560px;
+  height: 560px;
+  inset: auto -140px -170px auto;
+  transform: rotate(-10deg);
+  border-radius: 36px;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 8px, transparent 8px),
+    linear-gradient(rgba(255, 255, 255, 0.12) 8px, transparent 8px);
+  background-size: 80px 80px;
+}
+
+/* cabeçalho */
+.hanoi-theme .hero {
+  background:
+    linear-gradient(135deg, rgba(255, 209, 102, 0.18), transparent 38%),
+    linear-gradient(225deg, rgba(178, 76, 200, 0.20), transparent 42%),
+    linear-gradient(180deg, rgba(255, 247, 232, 0.10), transparent 70%);
+  border-color: rgba(255, 240, 204, 0.28);
+}
+
+.hanoi-theme h1 {
+  text-shadow:
+    4px 4px 0 rgba(123, 45, 146, 0.40),
+    8px 8px 0 rgba(42, 30, 63, 0.22);
+}
+
+/* painéis */
+.hanoi-theme .panel {
+  background: linear-gradient(180deg, #f2e4ff, #d9bdf8);
+  border-color: rgba(255, 255, 255, 0.30);
+}
+
+/* botão principal */
+.hanoi-theme .primary {
+  background: #b24cc8;
+  color: white;
+  box-shadow:
+    0 12px 0 #7b2d92,
+    0 18px 35px rgba(0, 0, 0, 0.24);
+}
+
+/* botão ghost */
+.hanoi-theme .ghost {
+  background: rgba(255, 240, 204, 0.12);
+  color: #fff0cc;
+  border-color: rgba(255, 240, 204, 0.24);
+}
+
+/* estatísticas */
+.hanoi-theme .stat:nth-child(1) {
+  background: #f2e4ff;
+  border-bottom-color: #b24cc8;
+}
+
+.hanoi-theme .stat:nth-child(2) {
+  background: #ffdca8;
+  border-bottom-color: #7b2d92;
+}
+
+.hanoi-theme .stat:nth-child(3) {
+  background: #c9e8ff;
+  border-bottom-color: #624b89;
+}
+
+.hanoi-theme .stat:nth-child(4) {
+  background: #fff7e8;
+  border-bottom-color: #b24cc8;
+}
+
+/* abas */
+.hanoi-theme .tabs button.active {
+  background: #eddcff;
+  color: #2a1e3f;
+  border-color: #b24cc8;
+}
+
+/* linhas, cards e tabelas */
+.hanoi-theme .match,
+.hanoi-theme .rank-row,
+.hanoi-theme .table-row:not(.head) {
+  background: #fff7e8;
+}
+
+/* botões internos */
+.hanoi-theme .result-buttons button {
+  background: #2a1e3f;
+  color: #fff0cc;
+}
+
+/* pódio */
+.hanoi-theme .podium-card {
+  background: #2a1e3f;
+  color: #fff0cc;
+}
+
+.hanoi-theme .podium-card span {
+  color: #ffd166;
+}
+
+.hanoi-theme .pos-1 {
+  background: linear-gradient(180deg, #ffdca8, #2a1e3f);
+  color: white;
+}
+
+.hanoi-theme .pos-2 {
+  background: linear-gradient(180deg, #d9bdf8, #2a1e3f);
+}
+
+.hanoi-theme .pos-3 {
+  background: linear-gradient(180deg, #c9e8ff, #2a1e3f);
+}
+
+/* cabeçalho da tabela */
+.hanoi-theme .table-row.head {
+  background: #2a1e3f;
+  color: #fff0cc;
+}
+
+/* botão perigo */
+.hanoi-theme .danger {
+  background: #2a1e3f;
+  color: #fff0cc;
+}
+
+/* campos */
+.hanoi-theme input,
+.hanoi-theme textarea,
+.hanoi-theme select {
+  background: #fff7e8;
+  color: #2a1e3f;
+  border-color: rgba(42, 30, 63, 0.16);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.hanoi-theme select {
+  width: 100%;
+  height: 54px;
+  border-radius: 16px;
+  padding: 0 48px 0 18px;
+
+  background-color: #fff7e8 !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #2a1e3f 50%),
+    linear-gradient(135deg, #2a1e3f 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 22px) 24px,
+    calc(100% - 16px) 24px !important;
+  background-size: 7px 7px, 7px 7px !important;
+  background-repeat: no-repeat !important;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.hanoi-theme .hint {
+  color: #6b4b92;
+}
+
+/* ============================= */
+/* TEMA TORNEIO DE DAMAS */
+/* ============================= */
+
+.checkers-theme {
+  --bg: #15151f;
+  --bg2: #08080d;
+  --card: #f6e6c8;
+  --cream: #fff0d2;
+  --red: #d62828;
+  --red2: #8f1414;
+  --ink: #14141c;
+  --muted: #d8c8ad;
+  --white: #fff7e8;
+  --line: rgba(255, 240, 210, 0.22);
+
+  background:
+    radial-gradient(circle at top left, rgba(214, 40, 40, 0.22), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255, 240, 210, 0.12), transparent 30%),
+    linear-gradient(135deg, #282836 0%, #15151f 48%, #08080d 100%);
+}
+
+.checkers-theme .bg-board {
+  position: fixed;
+  inset: auto -120px -160px auto;
+  width: 540px;
+  height: 540px;
+  opacity: 0.11;
+  transform: rotate(12deg);
+  pointer-events: none;
+  border-radius: 28px;
+  background-color: #fff7e8;
+  background-image:
+    linear-gradient(45deg, #d62828 25%, transparent 25%),
+    linear-gradient(-45deg, #d62828 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d62828 75%),
+    linear-gradient(-45deg, transparent 75%, #d62828 75%);
+  background-size: 80px 80px;
+  background-position:
+    0 0,
+    0 40px,
+    40px -40px,
+    -40px 0px;
+}
+
+.checkers-theme .hero {
+  background:
+    linear-gradient(135deg, rgba(214, 40, 40, 0.24), transparent 38%),
+    linear-gradient(225deg, rgba(255, 240, 210, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(255, 247, 232, 0.08), transparent 70%);
+  border-color: rgba(255, 240, 210, 0.28);
+}
+
+.checkers-theme h1 {
+  text-shadow:
+    4px 4px 0 rgba(214, 40, 40, 0.42),
+    8px 8px 0 rgba(8, 8, 13, 0.30);
+}
+
+.checkers-theme .panel {
+  background:
+    linear-gradient(180deg, #fff0d2, #e8c78e);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.checkers-theme .primary {
+  background: #d62828;
+  color: white;
+  box-shadow:
+    0 12px 0 #8f1414,
+    0 18px 35px rgba(0, 0, 0, 0.28);
+}
+
+.checkers-theme .ghost {
+  background: rgba(255, 240, 210, 0.12);
+  color: #fff0d2;
+  border-color: rgba(255, 240, 210, 0.26);
+}
+
+.checkers-theme .stat:nth-child(1) {
+  background: #fff0d2;
+  border-bottom-color: #d62828;
+}
+
+.checkers-theme .stat:nth-child(2) {
+  background: #f2d3a3;
+  border-bottom-color: #8f1414;
+}
+
+.checkers-theme .stat:nth-child(3) {
+  background: #ffffff;
+  border-bottom-color: #14141c;
+}
+
+.checkers-theme .stat:nth-child(4) {
+  background: #ffd2d2;
+  border-bottom-color: #d62828;
+}
+
+.checkers-theme .tabs button.active {
+  background: #fff0d2;
+  color: #14141c;
+  border-color: #d62828;
+}
+
+.checkers-theme .match,
+.checkers-theme .rank-row,
+.checkers-theme .table-row:not(.head) {
+  background: #fff7e8;
+}
+
+.checkers-theme .match-top span,
+.checkers-theme .result-buttons button {
+  background: #14141c;
+  color: #fff0d2;
+}
+
+.checkers-theme .versus span {
+  background: #d62828;
+  color: white;
+}
+
+.checkers-theme .podium-card {
+  background: #14141c;
+  color: #fff0d2;
+}
+
+.checkers-theme .podium-card span {
+  color: #d62828;
+}
+
+.checkers-theme .pos-1 {
+  background:
+    linear-gradient(180deg, #fff0d2, #14141c);
+  color: white;
+}
+
+.checkers-theme .pos-1 span {
+  color: #ffd166;
+}
+
+.checkers-theme .pos-2 {
+  background:
+    linear-gradient(180deg, #e8c78e, #14141c);
+}
+
+.checkers-theme .pos-3 {
+  background:
+    linear-gradient(180deg, #d62828, #14141c);
+}
+
+.checkers-theme .table-row.head {
+  background: #14141c;
+  color: #fff0d2;
+}
+
+.checkers-theme .danger {
+  background: #14141c;
+  color: #fff0d2;
+}
+
+.checkers-theme input,
+.checkers-theme textarea,
+.checkers-theme select {
+  background: #fff7e8;
+  color: #14141c;
+  border-color: rgba(20, 20, 28, 0.16);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.checkers-theme select {
+  width: 100%;
+  height: 54px;
+  border-radius: 16px;
+  padding: 0 48px 0 18px;
+
+  background-color: #fff7e8 !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #14141c 50%),
+    linear-gradient(135deg, #14141c 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 22px) 24px,
+    calc(100% - 16px) 24px !important;
+  background-size: 7px 7px, 7px 7px !important;
+  background-repeat: no-repeat !important;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.checkers-theme .hint {
+  color: #68451f;
+}
+
+/* ============================= */
+/* TEMA DA TELA INICIAL */
+/* ============================= */
+
+.home-theme {
+  --bg: #f7efe1;
+  --bg2: #ead8bd;
+  --card: #f5d18d;
+  --cream: #fff2d2;
+  --red: #ef2b22;
+  --red2: #b81714;
+  --ink: #182033;
+  --muted: #6e5c42;
+  --white: #182033;
+  --line: rgba(24, 32, 51, 0.12);
+
+  background:
+    radial-gradient(circle at top left, rgba(239, 43, 34, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(111, 183, 216, 0.14), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(178, 76, 200, 0.10), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(255, 209, 102, 0.20), transparent 32%),
+    linear-gradient(135deg, #fff8ea 0%, #f7efe1 48%, #ead8bd 100%);
+}
+
+/* Fundo decorativo da HomeScreen */
+.home-theme .bg-board {
+  opacity: 0.10;
+  width: 620px;
+  height: 620px;
+  inset: auto -160px -190px auto;
+  transform: rotate(10deg);
+  border-radius: 38px;
+
+  background-image:
+    linear-gradient(45deg, rgba(24, 32, 51, 0.18) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(24, 32, 51, 0.18) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(24, 32, 51, 0.18) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(24, 32, 51, 0.18) 75%);
+  background-size: 86px 86px;
+  background-position:
+    0 0,
+    0 43px,
+    43px -43px,
+    -43px 0px;
+}
+
+/* Cabeçalho da tela inicial */
+.home-theme .hero {
+  background:
+    linear-gradient(135deg, rgba(239, 43, 34, 0.10), transparent 42%),
+    linear-gradient(225deg, rgba(111, 183, 216, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), transparent 80%);
+  border-color: rgba(24, 32, 51, 0.12);
+  box-shadow: 0 20px 60px rgba(70, 51, 29, 0.16);
+}
+
+/* Textos da HomeScreen */
+.home-theme h1 {
+  color: #182033;
+  text-shadow:
+    4px 4px 0 rgba(239, 43, 34, 0.14),
+    8px 8px 0 rgba(111, 183, 216, 0.12);
+}
+
+.home-theme .eyebrow {
+  color: #8f1414;
+}
+
+.home-theme .subtitle {
+  color: #6e5c42;
+}
+
+/* Cards da HomeScreen */
+.home-theme .panel {
+  background:
+    linear-gradient(180deg, #ffe4a8, #f3c978);
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 18px 45px rgba(70, 51, 29, 0.18);
+}
+
+/* Botões da HomeScreen */
+.home-theme .primary {
+  background: #ef2b22;
+  color: white;
+  box-shadow:
+    0 12px 0 #b81714,
+    0 18px 30px rgba(70, 51, 29, 0.24);
+}
+
+/* Texto auxiliar */
+.home-theme .hint {
+  color: #6e4b16;
+}
