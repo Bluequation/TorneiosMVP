@@ -1,3 +1,4 @@
+import { playTabSound, playWinSound, playMenuSound } from "./sounds.js";
 export default function HanoiIcon({ size = 42 }) {
   return (
     <svg

@@ -1,5 +1,6 @@
 import React from "react";
 import CubeIcon from "./CubeIcon.jsx";
+import { playMenuSound } from "./sounds.js";
 
 export default function HomeScreen({ onSelectMode }) {
   return (
@@ -29,7 +30,9 @@ export default function HomeScreen({ onSelectMode }) {
 
           <button
             className="primary full"
-            onClick={() => onSelectMode("chess")}
+            onClick={() => {
+             playMenuSound();
+            onSelectMode("chess");}}
           >
             Abrir torneio de xadrez
           </button>
@@ -48,7 +51,10 @@ export default function HomeScreen({ onSelectMode }) {
 
           <button
             className="primary full"
-            onClick={() => onSelectMode("cube")}
+            onClick={() => {
+  playMenuSound();
+  onSelectMode("cube");
+}}
           >
             Abrir torneio de cubo mágico
           </button>
@@ -67,7 +73,10 @@ export default function HomeScreen({ onSelectMode }) {
 
           <button
             className="primary full"
-            onClick={() => onSelectMode("hanoi")}
+            onClick={() => {
+  playMenuSound();
+  onSelectMode("hanoi");
+}}
           >
             Abrir torneio de Hanoi
           </button>
@@ -86,7 +95,10 @@ export default function HomeScreen({ onSelectMode }) {
 
           <button
             className="primary full"
-            onClick={() => onSelectMode("checkers")}
+            onClick={() => {
+  playMenuSound();
+  onSelectMode("checkers");
+}}
           >
             Abrir torneio de dama
           </button>

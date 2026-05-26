@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { playTabSound, playWinSound, playMenuSound } from "./sounds.js";
 import CubeIcon from "./CubeIcon.jsx";
 import {
   Trophy,

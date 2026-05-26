@@ -1544,3 +1544,53 @@ h1 {
 .home-theme .hint {
   color: #6e4b16;
 }
+
+/* ============================= */
+/* STEPPER DE BLOCOS */
+/* ============================= */
+
+.block-stepper {
+  width: fit-content;
+  margin: 22px auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: #fff8e8;
+  border: 3px solid rgba(17, 23, 34, 0.14);
+  border-radius: 999px;
+  padding: 6px;
+  box-shadow: 0 10px 24px rgba(17, 23, 34, 0.12);
+}
+
+.block-current {
+  min-width: 130px;
+  padding: 10px 18px;
+  text-align: center;
+  font-weight: 1000;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.block-arrow {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 1000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.block-arrow:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.block-arrow:not(:disabled):hover {
+  transform: translateY(-1px);
+}
