@@ -1108,13 +1108,16 @@ function ChessTournament({ onBack }) {
   const canGoNextBlock = selectedBlock && selectedBlock.block < roundBlocks.length;
 
   return (
-    <div className="app" onClickCapture={handleAppClick}>
+    <div className="app chess-theme" onClickCapture={handleAppClick}>
       <div className="bg-board"></div>
 
       <header className="hero">
         <div>
           <p className="eyebrow">Torneio escolar de xadrez</p>
-          <h1>♟ {state.tournamentName}</h1>
+          <h1 className="title-with-icon">
+            <span className="title-emoji">♟</span>
+            {state.tournamentName}
+          </h1>
           <p className="subtitle">{state.schoolName || "Painel de controle do torneio"}</p>
         </div>
 

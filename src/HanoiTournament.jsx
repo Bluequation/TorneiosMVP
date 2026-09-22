@@ -32,6 +32,158 @@ const defaultState = {
   attempts: []
 };
 
+function requireValid(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function normalizeTournamentState(value) {
+  requireValid(
+    value && typeof value === "object" && !Array.isArray(value),
+    "Estrutura principal inválida."
+  );
+
+  const disks = Number(value.disks ?? defaultState.disks);
+  const attemptsPerPlayer = Number(
+    value.attemptsPerPlayer ?? defaultState.attemptsPerPlayer
+  );
+  const timeLimitSeconds = Number(
+    value.timeLimitSeconds ?? defaultState.timeLimitSeconds
+  );
+  const rankingMode = value.rankingMode ?? defaultState.rankingMode;
+
+  requireValid(
+    Number.isInteger(disks) && disks >= 3 && disks <= 8,
+    "O número de discos deve estar entre 3 e 8."
+  );
+  requireValid(
+    Number.isInteger(attemptsPerPlayer) &&
+      attemptsPerPlayer >= 1 &&
+      attemptsPerPlayer <= 10,
+    "A quantidade de tentativas por aluno é inválida."
+  );
+  requireValid(
+    Number.isFinite(timeLimitSeconds) && timeLimitSeconds >= 0,
+    "O tempo limite é inválido."
+  );
+  requireValid(
+    rankingMode === "moves" || rankingMode === "time",
+    "O critério de ranking é inválido."
+  );
+  requireValid(Array.isArray(value.players), "A lista de alunos é inválida.");
+  requireValid(
+    Array.isArray(value.attempts),
+    "A lista de tentativas é inválida."
+  );
+
+  const playerIds = new Set();
+  const players = value.players.map((player) => {
+    requireValid(
+      player && typeof player === "object" && !Array.isArray(player),
+      "Há um aluno inválido no arquivo."
+    );
+
+    const id = String(player.id ?? "").trim();
+    const name = String(player.name ?? "").trim();
+
+    requireValid(id && name, "Há um aluno sem identificação ou nome.");
+    requireValid(!playerIds.has(id), "Há alunos com identificação duplicada.");
+    playerIds.add(id);
+
+    return { id, name };
+  });
+
+  const attemptIds = new Set();
+  const attemptNumbers = new Map();
+  const attempts = value.attempts.map((attempt) => {
+    requireValid(
+      attempt && typeof attempt === "object" && !Array.isArray(attempt),
+      "Há uma tentativa inválida no arquivo."
+    );
+
+    const id = String(attempt.id ?? "").trim();
+    const playerId = String(attempt.playerId ?? "").trim();
+    const attemptNumber = Number(attempt.attempt);
+    const attemptDisks = Number(attempt.disks);
+    const status = attempt.status;
+
+    requireValid(id && !attemptIds.has(id), "Há tentativas duplicadas.");
+    requireValid(playerIds.has(playerId), "Há uma tentativa sem aluno válido.");
+    requireValid(
+      Number.isInteger(attemptNumber) &&
+        attemptNumber >= 1 &&
+        attemptNumber <= attemptsPerPlayer,
+      "Há uma numeração de tentativa inválida."
+    );
+    requireValid(
+      Number.isInteger(attemptDisks) && attemptDisks >= 3 && attemptDisks <= 8,
+      "Há uma tentativa com número de discos inválido."
+    );
+    requireValid(
+      status === "valid" || status === "dnf",
+      "Há uma tentativa com status inválido."
+    );
+
+    const numbersForPlayer = attemptNumbers.get(playerId) ?? new Set();
+    requireValid(
+      !numbersForPlayer.has(attemptNumber),
+      "Há numeração de tentativa repetida para o mesmo aluno."
+    );
+    numbersForPlayer.add(attemptNumber);
+    attemptNumbers.set(playerId, numbersForPlayer);
+    attemptIds.add(id);
+
+    let time = null;
+    let moves = null;
+
+    if (status === "valid") {
+      time = Number(attempt.time);
+      moves = Number(attempt.moves);
+
+      requireValid(
+        Number.isFinite(time) && time > 0,
+        "Há uma tentativa com tempo inválido."
+      );
+      requireValid(
+        Number.isInteger(moves) && moves >= minimumMoves(attemptDisks),
+        "Há uma tentativa com movimentos abaixo do mínimo possível."
+      );
+    }
+
+    const createdAt = String(attempt.createdAt ?? "");
+    requireValid(
+      createdAt && !Number.isNaN(Date.parse(createdAt)),
+      "Há uma tentativa sem data válida."
+    );
+
+    return {
+      id,
+      playerId,
+      attempt: attemptNumber,
+      disks: attemptDisks,
+      minimumMoves: minimumMoves(attemptDisks),
+      time,
+      moves,
+      status,
+      createdAt
+    };
+  });
+
+  return {
+    tournamentName: String(
+      value.tournamentName ?? defaultState.tournamentName
+    ).trim() || defaultState.tournamentName,
+    schoolName: String(value.schoolName ?? defaultState.schoolName).trim(),
+    disks,
+    attemptsPerPlayer,
+    timeLimitSeconds,
+    rankingMode,
+    players,
+    attempts
+  };
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -40,10 +192,7 @@ function loadState() {
       return defaultState;
     }
 
-    return {
-      ...defaultState,
-      ...JSON.parse(raw)
-    };
+    return normalizeTournamentState(JSON.parse(raw));
   } catch {
     return defaultState;
   }
@@ -82,7 +231,9 @@ function minimumMoves(disks) {
 }
 
 function getPlayerAttempts(playerId, attempts) {
-  return attempts.filter((attempt) => attempt.playerId === playerId);
+  return attempts
+    .filter((attempt) => attempt.playerId === playerId)
+    .sort((a, b) => a.attempt - b.attempt);
 }
 
 function getValidAttempts(playerId, attempts) {
@@ -113,6 +264,20 @@ function getCompletedAttempts(playerId, attempts) {
   return getPlayerAttempts(playerId, attempts).length;
 }
 
+function getNextAttemptNumber(playerId, attempts, limit) {
+  const usedNumbers = new Set(
+    getPlayerAttempts(playerId, attempts).map((attempt) => attempt.attempt)
+  );
+
+  for (let number = 1; number <= Number(limit); number += 1) {
+    if (!usedNumbers.has(number)) {
+      return number;
+    }
+  }
+
+  return Number(limit) + 1;
+}
+
 function HanoiTournament({ onBack }) {
   const [state, setState] = useState(loadState);
   const [activeTab, setActiveTab] = useState("setup");
@@ -133,7 +298,13 @@ function HanoiTournament({ onBack }) {
     ? getPlayerAttempts(selectedPlayerId, state.attempts)
     : [];
 
-  const nextAttempt = selectedPlayerAttempts.length + 1;
+  const nextAttempt = selectedPlayerId
+    ? getNextAttemptNumber(
+        selectedPlayerId,
+        state.attempts,
+        state.attemptsPerPlayer
+      )
+    : 1;
 
   const totalAttempts =
     state.players.length * Number(state.attemptsPerPlayer || 0);
@@ -168,6 +339,10 @@ function HanoiTournament({ onBack }) {
     });
   }, [state.players, state.attempts, state.rankingMode]);
 
+  const podiumRanking = ranking.filter((player) =>
+    getBestAttempt(player.id, state.attempts, state.rankingMode)
+  );
+
   function updateState(next) {
     setState((previous) => {
       if (typeof next === "function") {
@@ -183,6 +358,19 @@ function HanoiTournament({ onBack }) {
       .split("\n")
       .map((name) => name.trim())
       .filter(Boolean);
+
+    if (names.length === 0) {
+      alert("Digite pelo menos um nome antes de importar os alunos.");
+      return;
+    }
+
+    if (state.players.length > 0 || state.attempts.length > 0) {
+      const confirmReplace = confirm(
+        "Importar uma nova lista substituirá os alunos e apagará todas as tentativas atuais. Deseja continuar?"
+      );
+
+      if (!confirmReplace) return;
+    }
 
     const players = names.map((name) => ({
       id: uid("player"),
@@ -217,13 +405,22 @@ function HanoiTournament({ onBack }) {
     let moves = parseNumber(movesInput);
 
     if (statusType !== "dnf") {
-      if (time === null) {
+      if (time === null || time <= 0) {
         alert("Digite um tempo válido em segundos. Exemplo: 45.32");
         return;
       }
 
-      if (moves === null || moves <= 0) {
-        alert("Digite uma quantidade válida de movimentos.");
+      if (moves === null || !Number.isInteger(moves)) {
+        alert("Digite uma quantidade inteira de movimentos.");
+        return;
+      }
+
+      const theoreticalMinimum = minimumMoves(state.disks);
+
+      if (moves < theoreticalMinimum) {
+        alert(
+          `Com ${state.disks} discos, o mínimo possível é ${theoreticalMinimum} movimentos.`
+        );
         return;
       }
     }
@@ -317,12 +514,11 @@ function HanoiTournament({ onBack }) {
 
     reader.onload = () => {
       try {
-        const importedState = JSON.parse(reader.result);
+        const importedState = normalizeTournamentState(
+          JSON.parse(reader.result)
+        );
 
-        setState({
-          ...defaultState,
-          ...importedState
-        });
+        setState(importedState);
 
         if (importedState.players?.length > 0) {
           setSelectedPlayerId(importedState.players[0].id);
@@ -330,8 +526,14 @@ function HanoiTournament({ onBack }) {
 
         setActiveTab("setup");
         alert("Torneio importado com sucesso!");
-      } catch {
-        alert("Arquivo inválido. Selecione um JSON exportado pelo HanoiMVP.");
+      } catch (error) {
+        alert(
+          `Arquivo inválido. ${
+            error instanceof Error
+              ? error.message
+              : "Selecione um JSON exportado pelo HanoiMVP."
+          }`
+        );
       }
 
       event.target.value = "";
@@ -464,6 +666,12 @@ function HanoiTournament({ onBack }) {
               min="3"
               max="8"
               value={state.disks}
+              disabled={state.attempts.length > 0}
+              title={
+                state.attempts.length > 0
+                  ? "Reinicie o torneio para alterar o número de discos."
+                  : undefined
+              }
               onChange={(event) =>
                 updateState({
                   ...state,
@@ -474,6 +682,12 @@ function HanoiTournament({ onBack }) {
 
             <p className="hint">
               Mínimo ideal de movimentos: {minimumMoves(state.disks)}.
+              {state.attempts.length > 0 && (
+                <>
+                  {" "}O número de discos fica bloqueado após a primeira
+                  tentativa.
+                </>
+              )}
             </p>
 
             <label>Tentativas por aluno</label>
@@ -608,7 +822,8 @@ function HanoiTournament({ onBack }) {
                     <label>Número de movimentos</label>
                     <input
                       type="number"
-                      min="1"
+                      min={minimumMoves(state.disks)}
+                      step="1"
                       value={movesInput}
                       onChange={(event) => setMovesInput(event.target.value)}
                       placeholder={`Mínimo ideal: ${minimumMoves(state.disks)}`}
@@ -745,7 +960,11 @@ function HanoiTournament({ onBack }) {
           </p>
 
           <div className="podium">
-            {ranking.slice(0, 3).map((player, index) => {
+            {podiumRanking.length === 0 ? (
+              <div className="empty">
+                O pódio aparecerá depois da primeira tentativa válida.
+              </div>
+            ) : podiumRanking.slice(0, 3).map((player, index) => {
               const best = getBestAttempt(
                 player.id,
                 state.attempts,
@@ -777,7 +996,7 @@ function HanoiTournament({ onBack }) {
 
               return (
                 <div key={player.id} className="rank-row">
-                  <strong>{index + 1}º</strong>
+                  <strong>{best ? `${index + 1}º` : "—"}</strong>
                   <span>{player.name}</span>
                   <span>{best ? `${best.moves} mov.` : "-"}</span>
                   <small>

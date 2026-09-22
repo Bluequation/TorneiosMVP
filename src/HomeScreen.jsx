@@ -1,5 +1,8 @@
 import React from "react";
 import CubeIcon from "./CubeIcon.jsx";
+import HanoiIcon from "./HanoiIcon.jsx";
+import CheckersIcon from "./CheckersIcon.jsx";
+import InstallPWAButton from "./InstallPWAButton.jsx";
 import { playMenuSound } from "./sounds.js";
 
 export default function HomeScreen({ onSelectMode }) {
@@ -14,6 +17,10 @@ export default function HomeScreen({ onSelectMode }) {
           <p className="subtitle">
             Selecione a modalidade que deseja organizar.
           </p>
+        </div>
+
+        <div className="hero-actions">
+          <InstallPWAButton />
         </div>
       </header>
 
@@ -62,7 +69,7 @@ export default function HomeScreen({ onSelectMode }) {
 
         <section className="panel home-card">
           <h2>
-            <span className="home-hanoi-icon">▰</span>
+            <HanoiIcon size={38} />
             Torre de Hanoi
           </h2>
 
@@ -84,7 +91,7 @@ export default function HomeScreen({ onSelectMode }) {
 
         <section className="panel home-card">
           <h2>
-            <span className="home-dama-icon">●</span>
+            <CheckersIcon size={38} />
             Torneio de Dama
           </h2>
 

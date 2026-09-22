@@ -1,0 +1,32 @@
+{
+  "id": "./",
+  "name": "TorneiosMVP",
+  "short_name": "TorneiosMVP",
+  "description": "Sistema de torneios escolares de xadrez, dama, cubo magico e Torre de Hanoi.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7efe1",
+  "theme_color": "#182033",
+  "icons": [
+    {
+      "src": "./icons/torneios-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/torneios-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/torneios-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

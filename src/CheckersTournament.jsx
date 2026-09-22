@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import CheckersIcon from "./CheckersIcon.jsx";
 import {
   Trophy,
   Shuffle,
@@ -661,7 +662,10 @@ function CheckersTournament({ onBack }) {
       <header className="hero">
         <div>
           <p className="eyebrow">Torneio escolar de damas</p>
-          <h1>⚫ {state.tournamentName}</h1>
+          <h1 className="title-with-icon">
+            <CheckersIcon size={64} />
+            {state.tournamentName}
+          </h1>
           <p className="subtitle">
             {state.schoolName || "Painel de controle do torneio"}
           </p>
