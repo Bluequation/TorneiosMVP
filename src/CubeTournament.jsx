@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { playTabSound, playWinSound, playMenuSound } from "./sounds.js";
 import CubeIcon from "./CubeIcon.jsx";
+import TournamentRules from "./TournamentRules.jsx";
 import {
   Trophy,
   Users,
@@ -414,7 +415,8 @@ function CubeTournament({ onBack }) {
           ["setup", "Configuração"],
           ["attempts", "Tentativas"],
           ["ranking", "Ranking"],
-          ["history", "Histórico"]
+          ["history", "Histórico"],
+          ["rules", "Regras"]
         ].map(([id, label]) => (
           <button
             key={id}
@@ -425,6 +427,8 @@ function CubeTournament({ onBack }) {
           </button>
         ))}
       </nav>
+
+      {activeTab === "rules" && <TournamentRules tournament="cube" />}
 
       {activeTab === "setup" && (
         <main className="grid two">

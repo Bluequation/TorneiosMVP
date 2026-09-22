@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import CheckersIcon from "./CheckersIcon.jsx";
+import TournamentRules from "./TournamentRules.jsx";
 import {
   Trophy,
   Shuffle,
@@ -755,7 +756,8 @@ function CheckersTournament({ onBack }) {
           ["setup", "Configuração"],
           ["round", "Rodada atual"],
           ["ranking", "Ranking"],
-          ["history", "Histórico"]
+          ["history", "Histórico"],
+          ["rules", "Regras"]
         ].map(([id, label]) => (
           <button
             key={id}
@@ -766,6 +768,8 @@ function CheckersTournament({ onBack }) {
           </button>
         ))}
       </nav>
+
+      {activeTab === "rules" && <TournamentRules tournament="checkers" />}
 
       {activeTab === "setup" && (
         <main className="grid two">

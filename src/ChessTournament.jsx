@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import TournamentRules from "./TournamentRules.jsx";
 import {
   Trophy,
   Shuffle,
@@ -1203,7 +1204,8 @@ function ChessTournament({ onBack }) {
           ["setup", "Configuração"],
           ["round", "Rodada atual"],
           ["ranking", "Ranking"],
-          ["history", "Histórico"]
+          ["history", "Histórico"],
+          ["rules", "Regras"]
         ].map(([id, label]) => (
           <button
             key={id}
@@ -1218,6 +1220,8 @@ function ChessTournament({ onBack }) {
           </button>
         ))}
       </nav>
+
+      {activeTab === "rules" && <TournamentRules tournament="chess" />}
 
       {activeTab === "setup" && (
         <main className="grid two">
