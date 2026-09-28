@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import HanoiIcon from "./HanoiIcon.jsx";
 import TournamentRules from "./TournamentRules.jsx";
 import {
@@ -12,7 +12,12 @@ import {
   ArrowLeft,
   Download,
   Upload,
-  Layers
+  Layers,
+  Play,
+  Pause,
+  Plus,
+  Undo2,
+  CheckCircle2
 } from "lucide-react";
 
 const STORAGE_KEY = "hanoimvp-v1";
@@ -140,14 +145,19 @@ function normalizeTournamentState(value) {
 
     if (status === "valid") {
       time = Number(attempt.time);
-      moves = Number(attempt.moves);
+      const hasMoves =
+        attempt.moves !== null &&
+        attempt.moves !== undefined &&
+        String(attempt.moves).trim() !== "";
+      moves = hasMoves ? Number(attempt.moves) : null;
 
       requireValid(
         Number.isFinite(time) && time > 0,
         "Há uma tentativa com tempo inválido."
       );
       requireValid(
-        Number.isInteger(moves) && moves >= minimumMoves(attemptDisks),
+        moves === null ||
+          (Number.isInteger(moves) && moves >= minimumMoves(attemptDisks)),
         "Há uma tentativa com movimentos abaixo do mínimo possível."
       );
     }
@@ -167,6 +177,10 @@ function normalizeTournamentState(value) {
       time,
       moves,
       status,
+      timeLimitExceeded:
+        status === "valid" &&
+        timeLimitSeconds > 0 &&
+        time > timeLimitSeconds,
       createdAt
     };
   });
@@ -237,6 +251,23 @@ function getPlayerAttempts(playerId, attempts) {
     .sort((a, b) => a.attempt - b.attempt);
 }
 
+function formatMoves(moves) {
+  return Number.isInteger(moves) ? `${moves} mov.` : "Não informado";
+}
+
+function formatStopwatch(milliseconds) {
+  const safeMilliseconds = Math.max(0, Number(milliseconds) || 0);
+  const totalCentiseconds = Math.floor(safeMilliseconds / 10);
+  const minutes = Math.floor(totalCentiseconds / 6000);
+  const seconds = Math.floor((totalCentiseconds % 6000) / 100);
+  const centiseconds = totalCentiseconds % 100;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0"
+  )}.${String(centiseconds).padStart(2, "0")}`;
+}
+
 function getValidAttempts(playerId, attempts) {
   return getPlayerAttempts(playerId, attempts).filter(
     (attempt) => attempt.status === "valid"
@@ -251,11 +282,15 @@ function getBestAttempt(playerId, attempts, rankingMode) {
   return [...validAttempts].sort((a, b) => {
     if (rankingMode === "time") {
       if (a.time !== b.time) return a.time - b.time;
-      if (a.moves !== b.moves) return a.moves - b.moves;
+      const movesA = Number.isInteger(a.moves) ? a.moves : Infinity;
+      const movesB = Number.isInteger(b.moves) ? b.moves : Infinity;
+      if (movesA !== movesB) return movesA - movesB;
       return b.disks - a.disks;
     }
 
-    if (a.moves !== b.moves) return a.moves - b.moves;
+    const movesA = Number.isInteger(a.moves) ? a.moves : Infinity;
+    const movesB = Number.isInteger(b.moves) ? b.moves : Infinity;
+    if (movesA !== movesB) return movesA - movesB;
     if (a.time !== b.time) return a.time - b.time;
     return b.disks - a.disks;
   })[0];
@@ -284,12 +319,31 @@ function HanoiTournament({ onBack }) {
   const [activeTab, setActiveTab] = useState("setup");
   const [namesText, setNamesText] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
-  const [timeInput, setTimeInput] = useState("");
+  const [minutesInput, setMinutesInput] = useState("");
+  const [secondsInput, setSecondsInput] = useState("");
   const [movesInput, setMovesInput] = useState("");
+  const [stopwatchMilliseconds, setStopwatchMilliseconds] = useState(0);
+  const [stopwatchRunning, setStopwatchRunning] = useState(false);
+  const stopwatchBaseRef = useRef(0);
+  const stopwatchStartedAtRef = useRef(0);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  useEffect(() => {
+    if (!stopwatchRunning) return undefined;
+
+    stopwatchStartedAtRef.current = Date.now();
+    const interval = window.setInterval(() => {
+      setStopwatchMilliseconds(
+        stopwatchBaseRef.current +
+          (Date.now() - stopwatchStartedAtRef.current)
+      );
+    }, 30);
+
+    return () => window.clearInterval(interval);
+  }, [stopwatchRunning]);
 
   const selectedPlayer = state.players.find(
     (player) => player.id === selectedPlayerId
@@ -312,6 +366,18 @@ function HanoiTournament({ onBack }) {
 
   const completedAttempts = state.attempts.length;
 
+  const activePlayers = state.players.filter(
+    (player) =>
+      getCompletedAttempts(player.id, state.attempts) <
+      Number(state.attemptsPerPlayer)
+  );
+
+  const completedPlayers = state.players.filter(
+    (player) =>
+      getCompletedAttempts(player.id, state.attempts) >=
+      Number(state.attemptsPerPlayer)
+  );
+
   const tournamentFinished =
     state.players.length > 0 &&
     totalAttempts > 0 &&
@@ -328,10 +394,14 @@ function HanoiTournament({ onBack }) {
 
       if (state.rankingMode === "time") {
         if (bestA.time !== bestB.time) return bestA.time - bestB.time;
-        if (bestA.moves !== bestB.moves) return bestA.moves - bestB.moves;
+        const movesA = Number.isInteger(bestA.moves) ? bestA.moves : Infinity;
+        const movesB = Number.isInteger(bestB.moves) ? bestB.moves : Infinity;
+        if (movesA !== movesB) return movesA - movesB;
         if (bestA.disks !== bestB.disks) return bestB.disks - bestA.disks;
       } else {
-        if (bestA.moves !== bestB.moves) return bestA.moves - bestB.moves;
+        const movesA = Number.isInteger(bestA.moves) ? bestA.moves : Infinity;
+        const movesB = Number.isInteger(bestB.moves) ? bestB.moves : Infinity;
+        if (movesA !== movesB) return movesA - movesB;
         if (bestA.time !== bestB.time) return bestA.time - bestB.time;
         if (bestA.disks !== bestB.disks) return bestB.disks - bestA.disks;
       }
@@ -354,20 +424,88 @@ function HanoiTournament({ onBack }) {
     });
   }
 
-  function importPlayers() {
-    const names = namesText
+  function updateTimeLimitPart(part, rawValue) {
+    const value = Math.max(0, Number(rawValue) || 0);
+    const currentMinutes = Math.floor(Number(state.timeLimitSeconds || 0) / 60);
+    const currentSeconds = Number(state.timeLimitSeconds || 0) % 60;
+    const nextMinutes = part === "minutes" ? Math.floor(value) : currentMinutes;
+    const nextSeconds =
+      part === "seconds" ? Math.min(value, 59) : currentSeconds;
+
+    updateState({
+      ...state,
+      timeLimitSeconds: nextMinutes * 60 + nextSeconds
+    });
+  }
+
+  function getNamesFromInput() {
+    return namesText
       .split("\n")
       .map((name) => name.trim())
       .filter(Boolean);
+  }
+
+  function addPlayers() {
+    const names = getNamesFromInput();
 
     if (names.length === 0) {
-      alert("Digite pelo menos um nome antes de importar os alunos.");
+      alert("Digite pelo menos um nome antes de adicionar os participantes.");
+      return;
+    }
+
+    const existingNames = new Set(
+      state.players.map((player) => player.name.trim().toLocaleLowerCase("pt-BR"))
+    );
+    const namesToAdd = [];
+    const namesInNewList = new Set();
+
+    names.forEach((name) => {
+      const normalizedName = name.toLocaleLowerCase("pt-BR");
+      if (existingNames.has(normalizedName) || namesInNewList.has(normalizedName)) {
+        return;
+      }
+      namesInNewList.add(normalizedName);
+      namesToAdd.push(name);
+    });
+
+    if (namesToAdd.length === 0) {
+      alert("Todos os nomes digitados já estão na lista atual.");
+      return;
+    }
+
+    const newPlayers = namesToAdd.map((name) => ({
+      id: uid("player"),
+      name
+    }));
+
+    updateState((previous) => ({
+      ...previous,
+      players: [...previous.players, ...newPlayers]
+    }));
+
+    setNamesText("");
+    setSelectedPlayerId(newPlayers[0].id);
+    setActiveTab("attempts");
+
+    const skipped = names.length - namesToAdd.length;
+    if (skipped > 0) {
+      alert(
+        `${namesToAdd.length} participante(s) adicionado(s). ${skipped} nome(s) repetido(s) foram ignorados.`
+      );
+    }
+  }
+
+  function replacePlayers() {
+    const names = getNamesFromInput();
+
+    if (names.length === 0) {
+      alert("Digite pelo menos um nome antes de criar a nova lista.");
       return;
     }
 
     if (state.players.length > 0 || state.attempts.length > 0) {
       const confirmReplace = confirm(
-        "Importar uma nova lista substituirá os alunos e apagará todas as tentativas atuais. Deseja continuar?"
+        "Criar uma nova lista apagará os participantes e todas as tentativas atuais. Deseja continuar?"
       );
 
       if (!confirmReplace) return;
@@ -388,7 +526,53 @@ function HanoiTournament({ onBack }) {
       setSelectedPlayerId(players[0].id);
     }
 
+    setNamesText("");
     setActiveTab("attempts");
+  }
+
+  function startStopwatch() {
+    if (stopwatchRunning) return;
+    stopwatchBaseRef.current = stopwatchMilliseconds;
+    setStopwatchRunning(true);
+  }
+
+  function pauseStopwatch() {
+    if (!stopwatchRunning) return;
+    const currentMilliseconds =
+      stopwatchBaseRef.current +
+      (Date.now() - stopwatchStartedAtRef.current);
+    const totalSeconds = currentMilliseconds / 1000;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds - minutes * 60;
+
+    stopwatchBaseRef.current = currentMilliseconds;
+    setStopwatchMilliseconds(currentMilliseconds);
+    setStopwatchRunning(false);
+    setMinutesInput(String(minutes));
+    setSecondsInput(seconds.toFixed(2));
+  }
+
+  function resetStopwatch() {
+    stopwatchBaseRef.current = 0;
+    stopwatchStartedAtRef.current = 0;
+    setStopwatchRunning(false);
+    setStopwatchMilliseconds(0);
+  }
+
+  function useStopwatchTime() {
+    const currentMilliseconds = stopwatchRunning
+      ? stopwatchBaseRef.current +
+        (Date.now() - stopwatchStartedAtRef.current)
+      : stopwatchMilliseconds;
+    const totalSeconds = currentMilliseconds / 1000;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds - minutes * 60;
+
+    stopwatchBaseRef.current = currentMilliseconds;
+    setStopwatchMilliseconds(currentMilliseconds);
+    setStopwatchRunning(false);
+    setMinutesInput(String(minutes));
+    setSecondsInput(seconds.toFixed(2));
   }
 
   function registerAttempt(statusType = "valid") {
@@ -402,23 +586,31 @@ function HanoiTournament({ onBack }) {
       return;
     }
 
-    let time = parseNumber(timeInput);
-    let moves = parseNumber(movesInput);
+    const minutes = minutesInput.trim() === "" ? 0 : parseNumber(minutesInput);
+    const seconds = secondsInput.trim() === "" ? 0 : parseNumber(secondsInput);
+    let time =
+      minutes === null || seconds === null ? null : minutes * 60 + seconds;
+    let moves = movesInput.trim() === "" ? null : parseNumber(movesInput);
 
     if (statusType !== "dnf") {
-      if (time === null || time <= 0) {
-        alert("Digite um tempo válido em segundos. Exemplo: 45.32");
+      if (
+        time === null ||
+        time <= 0 ||
+        !Number.isInteger(minutes) ||
+        seconds >= 60
+      ) {
+        alert("Digite um tempo válido em minutos e segundos. Os segundos devem ser menores que 60.");
         return;
       }
 
-      if (moves === null || !Number.isInteger(moves)) {
-        alert("Digite uma quantidade inteira de movimentos.");
+      if (moves !== null && !Number.isInteger(moves)) {
+        alert("Se informar os movimentos, digite uma quantidade inteira.");
         return;
       }
 
       const theoreticalMinimum = minimumMoves(state.disks);
 
-      if (moves < theoreticalMinimum) {
+      if (moves !== null && moves < theoreticalMinimum) {
         alert(
           `Com ${state.disks} discos, o mínimo possível é ${theoreticalMinimum} movimentos.`
         );
@@ -426,15 +618,15 @@ function HanoiTournament({ onBack }) {
       }
     }
 
-    if (
-      statusType !== "dnf" &&
-      Number(state.timeLimitSeconds || 0) > 0 &&
-      time > Number(state.timeLimitSeconds)
-    ) {
-      statusType = "dnf";
+    if (statusType === "dnf") {
       time = null;
       moves = null;
     }
+
+    const timeLimitExceeded =
+      statusType !== "dnf" &&
+      Number(state.timeLimitSeconds || 0) > 0 &&
+      time > Number(state.timeLimitSeconds);
 
     const newAttempt = {
       id: uid("attempt"),
@@ -445,6 +637,7 @@ function HanoiTournament({ onBack }) {
       time,
       moves,
       status: statusType === "dnf" ? "dnf" : "valid",
+      timeLimitExceeded,
       createdAt: new Date().toISOString()
     };
 
@@ -453,12 +646,23 @@ function HanoiTournament({ onBack }) {
       attempts: [...previous.attempts, newAttempt]
     }));
 
-    setTimeInput("");
+    setMinutesInput("");
+    setSecondsInput("");
     setMovesInput("");
+    resetStopwatch();
+
+    if (nextAttempt >= Number(state.attemptsPerPlayer)) {
+      const nextPlayer = activePlayers.find(
+        (player) => player.id !== selectedPlayerId
+      );
+      if (nextPlayer) setSelectedPlayerId(nextPlayer.id);
+    }
   }
 
-  function removeAttempt(attemptId) {
-    const confirmRemove = confirm("Remover esta tentativa?");
+  function restoreAttempt(attemptId) {
+    const confirmRemove = confirm(
+      "Restituir esta tentativa? O registro será apagado e o participante poderá refazê-la."
+    );
 
     if (!confirmRemove) return;
 
@@ -479,8 +683,10 @@ function HanoiTournament({ onBack }) {
     setState(defaultState);
     setNamesText("");
     setSelectedPlayerId("");
-    setTimeInput("");
+    setMinutesInput("");
+    setSecondsInput("");
     setMovesInput("");
+    resetStopwatch();
     setActiveTab("setup");
   }
 
@@ -710,21 +916,39 @@ function HanoiTournament({ onBack }) {
               }
             />
 
-            <label>Tempo limite por tentativa, em segundos</label>
-            <input
-              type="number"
-              min="1"
-              value={state.timeLimitSeconds}
-              onChange={(event) =>
-                updateState({
-                  ...state,
-                  timeLimitSeconds: Number(event.target.value)
-                })
-              }
-            />
+            <label>Tempo de referência por tentativa</label>
+            <div className="time-inputs">
+              <div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={Math.floor(Number(state.timeLimitSeconds || 0) / 60)}
+                  onChange={(event) =>
+                    updateTimeLimitPart("minutes", event.target.value)
+                  }
+                />
+                <small>minutos</small>
+              </div>
+              <span>:</span>
+              <div>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  step="1"
+                  value={Number(state.timeLimitSeconds || 0) % 60}
+                  onChange={(event) =>
+                    updateTimeLimitPart("seconds", event.target.value)
+                  }
+                />
+                <small>segundos</small>
+              </div>
+            </div>
 
             <p className="hint">
-              Exemplo: 300 segundos = 5 minutos. Acima disso, vira DNF.
+              É apenas uma referência. Se o participante ultrapassar esse
+              tempo, a tentativa continuará válida e entrará no ranking.
             </p>
 
             <label>Critério principal de ranking</label>
@@ -759,14 +983,19 @@ function HanoiTournament({ onBack }) {
             />
 
             <div className="import-area">
-              <button className="primary full" onClick={importPlayers}>
-                Importar alunos
-              </button>
+              <div className="participant-import-actions">
+                <button className="primary" onClick={addPlayers}>
+                  <Plus size={18} />
+                  Adicionar à lista atual
+                </button>
+                <button className="ghost" onClick={replacePlayers}>
+                  Criar nova lista
+                </button>
+              </div>
 
               <p className="hint import-hint">
-                Total previsto de tentativas:{" "}
-                {(namesText.split("\n").filter(Boolean).length ||
-                  state.players.length) * Number(state.attemptsPerPlayer || 0)}
+                Lista atual: {state.players.length} participante(s) •{" "}
+                {completedPlayers.length} concluinte(s)
               </p>
             </div>
           </section>
@@ -792,18 +1021,28 @@ function HanoiTournament({ onBack }) {
                 >
                   <option value="">Selecione um aluno</option>
 
-                  {state.players.map((player) => {
-                    const attempts = getCompletedAttempts(
-                      player.id,
-                      state.attempts
-                    );
+                  {activePlayers.length > 0 && (
+                    <optgroup label="Em andamento">
+                      {activePlayers.map((player) => (
+                        <option key={player.id} value={player.id}>
+                          {player.name} — {getCompletedAttempts(
+                            player.id,
+                            state.attempts
+                          )}/{state.attemptsPerPlayer}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
 
-                    return (
-                      <option key={player.id} value={player.id}>
-                        {player.name} — {attempts}/{state.attemptsPerPlayer}
-                      </option>
-                    );
-                  })}
+                  {completedPlayers.length > 0 && (
+                    <optgroup label="Concluintes">
+                      {completedPlayers.map((player) => (
+                        <option key={player.id} value={player.id}>
+                          {player.name} — concluído
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
 
                 {selectedPlayer && (
@@ -817,15 +1056,86 @@ function HanoiTournament({ onBack }) {
                       </strong>
                     </p>
 
-                    <label>Tempo em segundos</label>
-                    <input
-                      value={timeInput}
-                      onChange={(event) => setTimeInput(event.target.value)}
-                      placeholder="Ex: 45.32"
-                      disabled={nextAttempt > state.attemptsPerPlayer}
-                    />
+                    <div className={`stopwatch-card${
+                      stopwatchRunning ? " running" : ""
+                    }`}>
+                      <span>Cronômetro</span>
+                      <strong>{formatStopwatch(stopwatchMilliseconds)}</strong>
+                      <div className="stopwatch-actions">
+                        {!stopwatchRunning ? (
+                          <button
+                            type="button"
+                            onClick={startStopwatch}
+                            disabled={nextAttempt > state.attemptsPerPlayer}
+                          >
+                            <Play size={17} />
+                            Iniciar
+                          </button>
+                        ) : (
+                          <button type="button" onClick={pauseStopwatch}>
+                            <Pause size={17} />
+                            Pausar
+                          </button>
+                        )}
+                        <button type="button" onClick={resetStopwatch}>
+                          <RotateCcw size={17} />
+                          Zerar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={useStopwatchTime}
+                          disabled={
+                            stopwatchMilliseconds <= 0 && !stopwatchRunning
+                          }
+                        >
+                          Usar tempo
+                        </button>
+                      </div>
+                      {Number(state.timeLimitSeconds || 0) > 0 &&
+                        stopwatchMilliseconds / 1000 >
+                          Number(state.timeLimitSeconds) && (
+                          <small className="time-limit-warning">
+                            Tempo de referência ultrapassado — a tentativa
+                            continua válida.
+                          </small>
+                        )}
+                    </div>
 
-                    <label>Número de movimentos</label>
+                    <label>Tempo da tentativa</label>
+                    <div className="time-inputs attempt-time-inputs">
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={minutesInput}
+                          onChange={(event) =>
+                            setMinutesInput(event.target.value)
+                          }
+                          placeholder="0"
+                          disabled={nextAttempt > state.attemptsPerPlayer}
+                        />
+                        <small>minutos</small>
+                      </div>
+                      <span>:</span>
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          value={secondsInput}
+                          onChange={(event) =>
+                            setSecondsInput(event.target.value)
+                          }
+                          placeholder="00.00"
+                          disabled={nextAttempt > state.attemptsPerPlayer}
+                        />
+                        <small>segundos</small>
+                      </div>
+                    </div>
+
+                    <label>Número de movimentos — opcional</label>
                     <input
                       type="number"
                       min={minimumMoves(state.disks)}
@@ -849,7 +1159,7 @@ function HanoiTournament({ onBack }) {
                         onClick={() => registerAttempt("dnf")}
                         disabled={nextAttempt > state.attemptsPerPlayer}
                       >
-                        DNF
+                        Não concluiu (DNF)
                       </button>
                     </div>
                   </>
@@ -887,7 +1197,7 @@ function HanoiTournament({ onBack }) {
                           state.rankingMode
                         );
 
-                        return best ? `${best.moves} mov.` : "-";
+                        return best ? formatMoves(best.moves) : "-";
                       })()}
                     </span>
                     <span>Tempo</span>
@@ -926,19 +1236,29 @@ function HanoiTournament({ onBack }) {
                         <span>
                           {attempt.status === "dnf"
                             ? "DNF"
-                            : formatTime(attempt.time)}
+                            : (
+                              <>
+                                {formatTime(attempt.time)}
+                                {attempt.timeLimitExceeded && (
+                                  <small className="attempt-warning">
+                                    Tempo excedido
+                                  </small>
+                                )}
+                              </>
+                            )}
                         </span>
                         <span>
                           {attempt.status === "dnf"
                             ? "DNF"
-                            : `${attempt.moves} mov.`}
+                            : formatMoves(attempt.moves)}
                         </span>
                         <span>
                           <button
                             className="danger"
-                            onClick={() => removeAttempt(attempt.id)}
+                            onClick={() => restoreAttempt(attempt.id)}
                           >
-                            Remover
+                            <Undo2 size={15} />
+                            Restituir
                           </button>
                         </span>
                       </div>
@@ -946,6 +1266,40 @@ function HanoiTournament({ onBack }) {
                   </div>
                 )}
               </>
+            )}
+          </section>
+
+          <section className="panel completed-participants-panel">
+            <div className="completed-participants-head">
+              <div>
+                <h2>
+                  <CheckCircle2 size={23} />
+                  Participantes concluintes
+                </h2>
+                <p className="hint">
+                  Esta lista é atualizada automaticamente após a última
+                  tentativa de cada participante.
+                </p>
+              </div>
+              <strong>{completedPlayers.length}</strong>
+            </div>
+
+            {completedPlayers.length === 0 ? (
+              <div className="empty">Nenhum participante concluiu ainda.</div>
+            ) : (
+              <div className="completed-participants-list">
+                {completedPlayers.map((player) => (
+                  <button
+                    type="button"
+                    key={player.id}
+                    onClick={() => setSelectedPlayerId(player.id)}
+                  >
+                    <CheckCircle2 size={17} />
+                    <span>{player.name}</span>
+                    <small>{state.attemptsPerPlayer} tentativas</small>
+                  </button>
+                ))}
+              </div>
             )}
           </section>
         </main>
@@ -963,6 +1317,12 @@ function HanoiTournament({ onBack }) {
             {state.rankingMode === "moves"
               ? "menor número de movimentos"
               : "menor tempo"}.
+            {state.rankingMode === "moves" && (
+              <>
+                {" "}Tentativas sem movimentos informados continuam salvas,
+                mas aparecem depois das tentativas com movimentos registrados.
+              </>
+            )}
           </p>
 
           <div className="podium">
@@ -985,7 +1345,9 @@ function HanoiTournament({ onBack }) {
                   <span>{index + 1}º</span>
                   <strong>{player.name}</strong>
                   <em>
-                    {best ? `${best.moves} mov. • ${formatTime(best.time)}` : "-"}
+                    {best
+                      ? `${formatMoves(best.moves)} • ${formatTime(best.time)}`
+                      : "-"}
                   </em>
                 </div>
               );
@@ -1004,9 +1366,10 @@ function HanoiTournament({ onBack }) {
                 <div key={player.id} className="rank-row">
                   <strong>{best ? `${index + 1}º` : "—"}</strong>
                   <span>{player.name}</span>
-                  <span>{best ? `${best.moves} mov.` : "-"}</span>
+                  <span>{best ? formatMoves(best.moves) : "-"}</span>
                   <small>
                     Tempo {best ? formatTime(best.time) : "-"}
+                    {best?.timeLimitExceeded ? " • excedido" : ""}
                     <br />
                     Discos {best ? best.disks : state.disks} • Tentativas{" "}
                     {getCompletedAttempts(player.id, state.attempts)}/
@@ -1048,12 +1411,14 @@ function HanoiTournament({ onBack }) {
                     <span>
                       {attempt.status === "dnf"
                         ? "DNF"
-                        : formatTime(attempt.time)}
+                        : `${formatTime(attempt.time)}${
+                            attempt.timeLimitExceeded ? " • excedido" : ""
+                          }`}
                     </span>
                     <span>
                       {attempt.status === "dnf"
                         ? "DNF"
-                        : `${attempt.moves} mov.`}
+                        : formatMoves(attempt.moves)}
                     </span>
                   </div>
                 );
