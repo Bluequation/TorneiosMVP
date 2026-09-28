@@ -17,10 +17,16 @@ import {
   Pause,
   Plus,
   Undo2,
-  CheckCircle2
+  CheckCircle2,
+  Archive,
+  Search,
+  Eye,
+  Trash2,
+  FolderOpen
 } from "lucide-react";
 
 const STORAGE_KEY = "hanoimvp-v1";
+const ARCHIVES_STORAGE_KEY = "hanoimvp-archives-v1";
 
 function uid(prefix = "id") {
   return `${prefix}-${Math.random().toString(36).slice(2)}-${Date.now()}`;
@@ -251,6 +257,36 @@ function getPlayerAttempts(playerId, attempts) {
     .sort((a, b) => a.attempt - b.attempt);
 }
 
+function loadArchives() {
+  try {
+    const raw = localStorage.getItem(ARCHIVES_STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.flatMap((archive) => {
+      try {
+        const id = String(archive?.id ?? "").trim();
+        const archivedAt = String(archive?.archivedAt ?? "");
+        if (!id || Number.isNaN(Date.parse(archivedAt))) return [];
+
+        return [
+          {
+            id,
+            archivedAt,
+            tournament: normalizeTournamentState(archive.tournament)
+          }
+        ];
+      } catch {
+        return [];
+      }
+    });
+  } catch {
+    return [];
+  }
+}
+
 function formatMoves(moves) {
   return Number.isInteger(moves) ? `${moves} mov.` : "Não informado";
 }
@@ -266,6 +302,24 @@ function formatStopwatch(milliseconds) {
     2,
     "0"
   )}.${String(centiseconds).padStart(2, "0")}`;
+}
+
+function formatArchiveDate(date) {
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return "Data indisponível";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(parsedDate);
+}
+
+function normalizeSearchText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
 }
 
 function getValidAttempts(playerId, attempts) {
@@ -300,6 +354,52 @@ function getCompletedAttempts(playerId, attempts) {
   return getPlayerAttempts(playerId, attempts).length;
 }
 
+function getTournamentRanking(tournamentState) {
+  return [...tournamentState.players].sort((a, b) => {
+    const bestA = getBestAttempt(
+      a.id,
+      tournamentState.attempts,
+      tournamentState.rankingMode
+    );
+    const bestB = getBestAttempt(
+      b.id,
+      tournamentState.attempts,
+      tournamentState.rankingMode
+    );
+
+    if (!bestA && bestB) return 1;
+    if (bestA && !bestB) return -1;
+    if (!bestA && !bestB) return a.name.localeCompare(b.name);
+
+    if (tournamentState.rankingMode === "time") {
+      if (bestA.time !== bestB.time) return bestA.time - bestB.time;
+      const movesA = Number.isInteger(bestA.moves) ? bestA.moves : Infinity;
+      const movesB = Number.isInteger(bestB.moves) ? bestB.moves : Infinity;
+      if (movesA !== movesB) return movesA - movesB;
+    } else {
+      const movesA = Number.isInteger(bestA.moves) ? bestA.moves : Infinity;
+      const movesB = Number.isInteger(bestB.moves) ? bestB.moves : Infinity;
+      if (movesA !== movesB) return movesA - movesB;
+      if (bestA.time !== bestB.time) return bestA.time - bestB.time;
+    }
+
+    if (bestA.disks !== bestB.disks) return bestB.disks - bestA.disks;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function isTournamentFinished(tournamentState) {
+  const totalAttempts =
+    tournamentState.players.length *
+    Number(tournamentState.attemptsPerPlayer || 0);
+
+  return (
+    tournamentState.players.length > 0 &&
+    totalAttempts > 0 &&
+    tournamentState.attempts.length >= totalAttempts
+  );
+}
+
 function getNextAttemptNumber(playerId, attempts, limit) {
   const usedNumbers = new Set(
     getPlayerAttempts(playerId, attempts).map((attempt) => attempt.attempt)
@@ -316,9 +416,12 @@ function getNextAttemptNumber(playerId, attempts, limit) {
 
 function HanoiTournament({ onBack }) {
   const [state, setState] = useState(loadState);
+  const [archives, setArchives] = useState(loadArchives);
   const [activeTab, setActiveTab] = useState("setup");
   const [namesText, setNamesText] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [archiveSearch, setArchiveSearch] = useState("");
+  const [selectedArchiveId, setSelectedArchiveId] = useState("");
   const [minutesInput, setMinutesInput] = useState("");
   const [secondsInput, setSecondsInput] = useState("");
   const [movesInput, setMovesInput] = useState("");
@@ -330,6 +433,10 @@ function HanoiTournament({ onBack }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  useEffect(() => {
+    localStorage.setItem(ARCHIVES_STORAGE_KEY, JSON.stringify(archives));
+  }, [archives]);
 
   useEffect(() => {
     if (!stopwatchRunning) return undefined;
@@ -378,37 +485,40 @@ function HanoiTournament({ onBack }) {
       Number(state.attemptsPerPlayer)
   );
 
-  const tournamentFinished =
-    state.players.length > 0 &&
-    totalAttempts > 0 &&
-    completedAttempts >= totalAttempts;
+  const tournamentFinished = isTournamentFinished(state);
 
-  const ranking = useMemo(() => {
-    return [...state.players].sort((a, b) => {
-      const bestA = getBestAttempt(a.id, state.attempts, state.rankingMode);
-      const bestB = getBestAttempt(b.id, state.attempts, state.rankingMode);
+  const ranking = useMemo(() => getTournamentRanking(state), [state]);
 
-      if (!bestA && bestB) return 1;
-      if (bestA && !bestB) return -1;
-      if (!bestA && !bestB) return a.name.localeCompare(b.name);
+  const filteredArchives = useMemo(() => {
+    const search = normalizeSearchText(archiveSearch);
+    if (!search) return archives;
 
-      if (state.rankingMode === "time") {
-        if (bestA.time !== bestB.time) return bestA.time - bestB.time;
-        const movesA = Number.isInteger(bestA.moves) ? bestA.moves : Infinity;
-        const movesB = Number.isInteger(bestB.moves) ? bestB.moves : Infinity;
-        if (movesA !== movesB) return movesA - movesB;
-        if (bestA.disks !== bestB.disks) return bestB.disks - bestA.disks;
-      } else {
-        const movesA = Number.isInteger(bestA.moves) ? bestA.moves : Infinity;
-        const movesB = Number.isInteger(bestB.moves) ? bestB.moves : Infinity;
-        if (movesA !== movesB) return movesA - movesB;
-        if (bestA.time !== bestB.time) return bestA.time - bestB.time;
-        if (bestA.disks !== bestB.disks) return bestB.disks - bestA.disks;
-      }
+    return archives.filter((archive) => {
+      const tournament = archive.tournament;
+      const searchableValues = [
+        tournament.tournamentName,
+        tournament.schoolName,
+        formatArchiveDate(archive.archivedAt),
+        ...tournament.players.map((player) => player.name)
+      ];
 
-      return a.name.localeCompare(b.name);
+      return searchableValues.some((value) =>
+        normalizeSearchText(value).includes(search)
+      );
     });
-  }, [state.players, state.attempts, state.rankingMode]);
+  }, [archives, archiveSearch]);
+
+  const selectedArchive = archives.find(
+    (archive) => archive.id === selectedArchiveId
+  );
+
+  const selectedArchiveRanking = useMemo(
+    () =>
+      selectedArchive
+        ? getTournamentRanking(selectedArchive.tournament)
+        : [],
+    [selectedArchive]
+  );
 
   const podiumRanking = ranking.filter((player) =>
     getBestAttempt(player.id, state.attempts, state.rankingMode)
@@ -436,6 +546,113 @@ function HanoiTournament({ onBack }) {
       ...state,
       timeLimitSeconds: nextMinutes * 60 + nextSeconds
     });
+  }
+
+  function makeArchive(tournamentState) {
+    return {
+      id: uid("archive"),
+      archivedAt: new Date().toISOString(),
+      tournament: normalizeTournamentState(
+        JSON.parse(JSON.stringify(tournamentState))
+      )
+    };
+  }
+
+  function hasTournamentData(tournamentState = state) {
+    return (
+      tournamentState.players.length > 0 ||
+      tournamentState.attempts.length > 0
+    );
+  }
+
+  function createFreshTournament(players = []) {
+    return {
+      ...defaultState,
+      schoolName: state.schoolName,
+      disks: state.disks,
+      attemptsPerPlayer: state.attemptsPerPlayer,
+      timeLimitSeconds: state.timeLimitSeconds,
+      rankingMode: state.rankingMode,
+      players,
+      attempts: []
+    };
+  }
+
+  function archiveCurrentAndStartNew(players = [], destinationTab = "setup") {
+    if (hasTournamentData()) {
+      const confirmArchive = confirm(
+        "O torneio atual será salvo em Torneios salvos e uma nova edição será iniciada. Deseja continuar?"
+      );
+
+      if (!confirmArchive) return false;
+      setArchives((previous) => [makeArchive(state), ...previous]);
+    }
+
+    const nextState = createFreshTournament(players);
+    setState(nextState);
+    setSelectedPlayerId(players[0]?.id || "");
+    setSelectedArchiveId("");
+    setNamesText("");
+    setMinutesInput("");
+    setSecondsInput("");
+    setMovesInput("");
+    resetStopwatch();
+    setActiveTab(destinationTab);
+    return true;
+  }
+
+  function exportArchivedTournament(archive) {
+    const data = JSON.stringify(archive.tournament, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeName = archive.tournament.tournamentName
+      .replace(/[^a-z0-9_-]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLocaleLowerCase("pt-BR");
+
+    link.href = url;
+    link.download = `${safeName || "hanoimvp"}-arquivado.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function resumeArchivedTournament(archive) {
+    const currentWillBeArchived = hasTournamentData();
+    const confirmResume = confirm(
+      currentWillBeArchived
+        ? "O torneio atual será arquivado, e esta edição passará a ser o torneio ativo. Deseja continuar?"
+        : "Esta edição passará a ser o torneio ativo. Deseja continuar?"
+    );
+
+    if (!confirmResume) return;
+
+    setArchives((previous) => {
+      const withoutSelected = previous.filter((item) => item.id !== archive.id);
+      return currentWillBeArchived
+        ? [makeArchive(state), ...withoutSelected]
+        : withoutSelected;
+    });
+
+    const resumedState = normalizeTournamentState(
+      JSON.parse(JSON.stringify(archive.tournament))
+    );
+    setState(resumedState);
+    setSelectedPlayerId(resumedState.players[0]?.id || "");
+    setSelectedArchiveId("");
+    setActiveTab("attempts");
+  }
+
+  function deleteArchivedTournament(archive) {
+    const confirmDelete = confirm(
+      `Excluir definitivamente o torneio “${archive.tournament.tournamentName}”? Antes de excluir, você pode exportar uma cópia de segurança.`
+    );
+
+    if (!confirmDelete) return;
+    setArchives((previous) =>
+      previous.filter((item) => item.id !== archive.id)
+    );
+    setSelectedArchiveId("");
   }
 
   function getNamesFromInput() {
@@ -503,31 +720,17 @@ function HanoiTournament({ onBack }) {
       return;
     }
 
-    if (state.players.length > 0 || state.attempts.length > 0) {
-      const confirmReplace = confirm(
-        "Criar uma nova lista apagará os participantes e todas as tentativas atuais. Deseja continuar?"
-      );
-
-      if (!confirmReplace) return;
-    }
-
-    const players = names.map((name) => ({
+    const uniqueNames = [
+      ...new Map(
+        names.map((name) => [name.toLocaleLowerCase("pt-BR"), name])
+      ).values()
+    ];
+    const players = uniqueNames.map((name) => ({
       id: uid("player"),
       name
     }));
 
-    updateState((previous) => ({
-      ...previous,
-      players,
-      attempts: []
-    }));
-
-    if (players.length > 0) {
-      setSelectedPlayerId(players[0].id);
-    }
-
-    setNamesText("");
-    setActiveTab("attempts");
+    archiveCurrentAndStartNew(players, "attempts");
   }
 
   function startStopwatch() {
@@ -673,14 +876,20 @@ function HanoiTournament({ onBack }) {
   }
 
   function resetTournament() {
+    const currentWillBeArchived = hasTournamentData();
     const confirmReset = confirm(
-      "Tem certeza que deseja apagar o torneio de Torre de Hanoi?"
+      currentWillBeArchived
+        ? "O torneio atual será arquivado e uma nova edição vazia será criada. Deseja continuar?"
+        : "Iniciar uma nova edição vazia?"
     );
 
     if (!confirmReset) return;
 
-    localStorage.removeItem(STORAGE_KEY);
-    setState(defaultState);
+    if (currentWillBeArchived) {
+      setArchives((previous) => [makeArchive(state), ...previous]);
+    }
+
+    setState(createFreshTournament());
     setNamesText("");
     setSelectedPlayerId("");
     setMinutesInput("");
@@ -708,8 +917,11 @@ function HanoiTournament({ onBack }) {
 
     if (!file) return;
 
+    const currentWillBeArchived = hasTournamentData();
     const confirmImport = confirm(
-      "Importar este arquivo vai substituir o torneio atual. Deseja continuar?"
+      currentWillBeArchived
+        ? "O torneio atual será salvo em Torneios salvos antes de abrir o arquivo importado. Deseja continuar?"
+        : "Abrir este arquivo como torneio atual?"
     );
 
     if (!confirmImport) {
@@ -724,6 +936,10 @@ function HanoiTournament({ onBack }) {
         const importedState = normalizeTournamentState(
           JSON.parse(reader.result)
         );
+
+        if (currentWillBeArchived) {
+          setArchives((previous) => [makeArchive(state), ...previous]);
+        }
 
         setState(importedState);
 
@@ -773,7 +989,7 @@ function HanoiTournament({ onBack }) {
 
           <button className="ghost" onClick={resetTournament}>
             <RotateCcw size={18} />
-            Reiniciar
+            Nova edição
           </button>
 
           <button className="ghost" onClick={exportTournament}>
@@ -828,6 +1044,7 @@ function HanoiTournament({ onBack }) {
           ["attempts", "Tentativas"],
           ["ranking", "Ranking"],
           ["history", "Histórico"],
+          ["archives", "Torneios salvos"],
           ["rules", "Regras"]
         ].map(([id, label]) => (
           <button
@@ -842,6 +1059,234 @@ function HanoiTournament({ onBack }) {
 
       {activeTab === "rules" && (
         <TournamentRules tournament="hanoi" disks={state.disks} />
+      )}
+
+      {activeTab === "archives" && (
+        <main className="panel archive-manager">
+          {selectedArchive ? (
+            <>
+              <div className="archive-detail-header">
+                <button
+                  type="button"
+                  className="archive-back-button"
+                  onClick={() => setSelectedArchiveId("")}
+                >
+                  <ArrowLeft size={18} />
+                  Todos os torneios
+                </button>
+                <span className="archive-readonly-badge">Modo de consulta</span>
+              </div>
+
+              <div className="archive-detail-title">
+                <div>
+                  <p className="eyebrow">Torneio arquivado</p>
+                  <h2>{selectedArchive.tournament.tournamentName}</h2>
+                  <p>
+                    Salvo em {formatArchiveDate(selectedArchive.archivedAt)}
+                  </p>
+                </div>
+                <div className="archive-detail-actions">
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => resumeArchivedTournament(selectedArchive)}
+                  >
+                    <FolderOpen size={18} />
+                    Retomar como atual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportArchivedTournament(selectedArchive)}
+                  >
+                    <Download size={18} />
+                    Exportar
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => deleteArchivedTournament(selectedArchive)}
+                  >
+                    <Trash2 size={18} />
+                    Excluir
+                  </button>
+                </div>
+              </div>
+
+              <div className="archive-summary-grid">
+                <div><Users /><span>Participantes</span><strong>{selectedArchive.tournament.players.length}</strong></div>
+                <div><Layers /><span>Discos</span><strong>{selectedArchive.tournament.disks}</strong></div>
+                <div><Timer /><span>Tentativas</span><strong>{selectedArchive.tournament.attempts.length}</strong></div>
+                <div><Trophy /><span>Status</span><strong>{isTournamentFinished(selectedArchive.tournament) ? "Concluído" : "Arquivado"}</strong></div>
+              </div>
+
+              <div className="archive-detail-grid">
+                <section>
+                  <h3>Participantes</h3>
+                  <div className="archive-player-list">
+                    {selectedArchive.tournament.players.map((player) => (
+                      <div key={player.id}>
+                        <span>{player.name}</span>
+                        <small>
+                          {getCompletedAttempts(
+                            player.id,
+                            selectedArchive.tournament.attempts
+                          )}/{selectedArchive.tournament.attemptsPerPlayer} tentativas
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <h3>Ranking salvo</h3>
+                  <div className="ranking-list">
+                    {selectedArchiveRanking.map((player, index) => {
+                      const best = getBestAttempt(
+                        player.id,
+                        selectedArchive.tournament.attempts,
+                        selectedArchive.tournament.rankingMode
+                      );
+
+                      return (
+                        <div className="rank-row" key={player.id}>
+                          <strong>{best ? `${index + 1}º` : "—"}</strong>
+                          <span>{player.name}</span>
+                          <span>{best ? formatMoves(best.moves) : "-"}</span>
+                          <small>{best ? formatTime(best.time) : "Sem tentativa válida"}</small>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+
+              <section className="archive-attempts">
+                <h3>Histórico de tentativas</h3>
+                {selectedArchive.tournament.attempts.length === 0 ? (
+                  <div className="empty">Nenhuma tentativa registrada.</div>
+                ) : (
+                  <div className="table">
+                    <div className="table-row head">
+                      <span>Participante</span>
+                      <span>Tent.</span>
+                      <span>Discos</span>
+                      <span>Tempo</span>
+                      <span>Mov.</span>
+                    </div>
+                    {selectedArchive.tournament.attempts.map((attempt) => {
+                      const player = selectedArchive.tournament.players.find(
+                        (item) => item.id === attempt.playerId
+                      );
+
+                      return (
+                        <div className="table-row" key={attempt.id}>
+                          <span>{player?.name || "Participante removido"}</span>
+                          <span>{attempt.attempt}ª</span>
+                          <span>{attempt.disks}</span>
+                          <span>{attempt.status === "dnf" ? "DNF" : formatTime(attempt.time)}</span>
+                          <span>{attempt.status === "dnf" ? "DNF" : formatMoves(attempt.moves)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            </>
+          ) : (
+            <>
+              <div className="archive-manager-header">
+                <div>
+                  <p className="eyebrow">Edições do Hanoi</p>
+                  <h2>Torneios salvos</h2>
+                  <p>
+                    Consulte resultados antigos ou inicie uma nova edição sem
+                    apagar a atual.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => archiveCurrentAndStartNew([], "setup")}
+                >
+                  <Plus size={18} />
+                  Arquivar atual e iniciar novo
+                </button>
+              </div>
+
+              <section className="current-tournament-card">
+                <div className="current-tournament-icon"><Archive /></div>
+                <div>
+                  <small>Edição atual</small>
+                  <h3>{state.tournamentName}</h3>
+                  <p>
+                    {state.players.length} participantes • {state.disks} discos
+                    • {tournamentFinished ? " concluído" : " em andamento"}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setActiveTab("attempts")}>
+                  Abrir atual
+                </button>
+              </section>
+
+              <div className="archive-search">
+                <Search size={19} />
+                <input
+                  value={archiveSearch}
+                  onChange={(event) => setArchiveSearch(event.target.value)}
+                  placeholder="Buscar por torneio, data ou participante"
+                />
+              </div>
+
+              {filteredArchives.length === 0 ? (
+                <div className="empty archive-empty">
+                  {archives.length === 0
+                    ? "Nenhum torneio foi arquivado ainda."
+                    : "Nenhum torneio ou participante corresponde à busca."}
+                </div>
+              ) : (
+                <div className="archive-card-grid">
+                  {filteredArchives.map((archive) => {
+                    const tournament = archive.tournament;
+                    const archiveRanking = getTournamentRanking(tournament);
+                    const winner = archiveRanking.find((player) =>
+                      getBestAttempt(
+                        player.id,
+                        tournament.attempts,
+                        tournament.rankingMode
+                      )
+                    );
+
+                    return (
+                      <article className="archive-card" key={archive.id}>
+                        <div className="archive-card-top">
+                          <span className={isTournamentFinished(tournament) ? "finished" : "saved"}>
+                            {isTournamentFinished(tournament) ? "Concluído" : "Arquivado"}
+                          </span>
+                          <small>{formatArchiveDate(archive.archivedAt)}</small>
+                        </div>
+                        <h3>{tournament.tournamentName}</h3>
+                        <p>
+                          {tournament.players.length} participantes • {tournament.disks} discos
+                        </p>
+                        <div className="archive-card-result">
+                          <Trophy size={17} />
+                          <span>{winner ? `1º lugar: ${winner.name}` : "Sem classificação"}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedArchiveId(archive.id)}
+                        >
+                          <Eye size={18} />
+                          Abrir resultados
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </main>
       )}
 
       {activeTab === "setup" && (
@@ -989,7 +1434,7 @@ function HanoiTournament({ onBack }) {
                   Adicionar à lista atual
                 </button>
                 <button className="ghost" onClick={replacePlayers}>
-                  Criar nova lista
+                  Arquivar atual e criar novo
                 </button>
               </div>
 
