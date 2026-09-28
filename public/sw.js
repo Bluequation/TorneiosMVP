@@ -1,4 +1,4 @@
-const CACHE_NAME = "torneiosmvp-v3-torneios-salvos";
+const CACHE_NAME = "torneiosmvp-v4-gerenciador-torneios";
 
 function appUrl(path = "./") {
   return new URL(path, self.registration.scope).href;

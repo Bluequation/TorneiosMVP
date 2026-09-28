@@ -3452,3 +3452,334 @@ select:focus-visible,
     flex: 1 1 100%;
   }
 }
+
+/* Hanoi: gerenciador unificado e inscrição */
+.tournament-manager-screen .hero {
+  margin-bottom: 22px;
+}
+
+.unified-tournament-manager {
+  display: block !important;
+}
+
+.manager-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+  align-items: end;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.09);
+}
+
+.manager-toolbar h2 {
+  margin: 0 0 5px;
+}
+
+.manager-toolbar p {
+  margin: 0;
+  color: #64748b;
+}
+
+.manager-search {
+  margin: 0;
+}
+
+.manager-status-filters {
+  display: flex;
+  gap: 8px;
+  margin: 17px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.manager-status-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.manager-status-filters button {
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+}
+
+.manager-status-filters button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(var(--accent-rgb), 0.18);
+}
+
+.manager-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+}
+
+.manager-tournament-card .archive-card-top > span.status-registration,
+.tournament-status.status-registration {
+  color: #6d28d9;
+  background: #ede9fe;
+}
+
+.manager-tournament-card .archive-card-top > span.status-active,
+.tournament-status.status-active {
+  color: #0369a1;
+  background: #e0f2fe;
+}
+
+.manager-tournament-card .archive-card-top > span.status-finished,
+.tournament-status.status-finished {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.manager-card-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px !important;
+  color: #475569 !important;
+}
+
+.manager-card-location {
+  margin-top: 5px !important;
+  font-size: 0.82rem;
+}
+
+.manager-card-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.manager-card-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 9px;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.manager-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) 42px 42px;
+  gap: 7px;
+  margin-top: auto;
+}
+
+.manager-card-actions button {
+  min-width: 0;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+}
+
+.manager-card-actions button.primary {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.manager-card-actions .manager-delete-button {
+  color: #dc2626;
+}
+
+.manager-empty {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.manager-empty svg {
+  color: var(--accent);
+}
+
+.manager-empty span {
+  color: #64748b;
+}
+
+.tournament-registration-grid .tournament-form-toolbar,
+.tournament-registration-grid .tournament-participants-panel {
+  grid-column: 1 / -1;
+}
+
+.tournament-form-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.tournament-form-toolbar h2 {
+  margin: 8px 0 5px;
+}
+
+.tournament-form-toolbar p {
+  margin: 0;
+  color: #64748b;
+}
+
+.tournament-status {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tournament-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tournament-form-actions button {
+  min-height: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+}
+
+.tournament-form-actions button.primary {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.event-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tournament-notes {
+  min-height: 92px;
+}
+
+.participants-config-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.participants-config-head h2 {
+  margin-bottom: 4px;
+}
+
+.registration-player-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.registration-player-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 10px;
+  padding: 12px 13px;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 12px;
+}
+
+.registration-player-list span {
+  font-weight: 800;
+}
+
+.registration-player-list small {
+  grid-column: 1;
+  color: #64748b;
+}
+
+.registration-player-list button {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  min-height: 35px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+}
+
+.finished-tournament-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-color: rgba(22, 163, 74, 0.2);
+  background: linear-gradient(135deg, #f0fdf4, #ffffff);
+}
+
+.finished-tournament-banner strong {
+  color: #166534;
+  font-size: 1rem;
+}
+
+.finished-tournament-banner p {
+  margin: 5px 0 0;
+  color: #64748b;
+}
+
+.finished-tournament-banner button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .manager-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-form-toolbar {
+    flex-direction: column;
+  }
+
+  .tournament-form-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .tournament-form-actions button {
+    flex: 1 1 45%;
+  }
+
+  .finished-tournament-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .event-date-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-card-actions {
+    grid-template-columns: 1fr 1fr 42px 42px;
+  }
+}

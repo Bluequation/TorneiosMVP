@@ -28,6 +28,12 @@ import {
 const STORAGE_KEY = "hanoimvp-v1";
 const ARCHIVES_STORAGE_KEY = "hanoimvp-archives-v1";
 
+function getLocalDateInputValue() {
+  const now = new Date();
+  const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return localTime.toISOString().slice(0, 10);
+}
+
 function uid(prefix = "id") {
   return `${prefix}-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 }
@@ -35,6 +41,12 @@ function uid(prefix = "id") {
 const defaultState = {
   tournamentName: "HanoiMVP",
   schoolName: "",
+  eventDate: getLocalDateInputValue(),
+  eventTime: "",
+  location: "",
+  notes: "",
+  status: "registration",
+  isSaved: false,
   disks: 3,
   attemptsPerPlayer: 3,
   timeLimitSeconds: 300,
@@ -191,11 +203,32 @@ function normalizeTournamentState(value) {
     };
   });
 
+  const totalExpectedAttempts = players.length * attemptsPerPlayer;
+  const derivedStatus =
+    attempts.length === 0
+      ? "registration"
+      : totalExpectedAttempts > 0 && attempts.length >= totalExpectedAttempts
+      ? "finished"
+      : "active";
+  const status = ["registration", "active", "finished"].includes(value.status)
+    ? value.status
+    : derivedStatus;
+
   return {
     tournamentName: String(
       value.tournamentName ?? defaultState.tournamentName
     ).trim() || defaultState.tournamentName,
     schoolName: String(value.schoolName ?? defaultState.schoolName).trim(),
+    eventDate:
+      String(value.eventDate ?? "").trim() || getLocalDateInputValue(),
+    eventTime: String(value.eventTime ?? "").trim(),
+    location: String(value.location ?? "").trim(),
+    notes: String(value.notes ?? "").trim(),
+    status,
+    isSaved:
+      typeof value.isSaved === "boolean"
+        ? value.isSaved
+        : players.length > 0 || attempts.length > 0,
     disks,
     attemptsPerPlayer,
     timeLimitSeconds,
@@ -314,6 +347,19 @@ function formatArchiveDate(date) {
   }).format(parsedDate);
 }
 
+function formatEventDate(date) {
+  if (!date) return "Data não definida";
+  const parsedDate = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) return date;
+  return new Intl.DateTimeFormat("pt-BR").format(parsedDate);
+}
+
+function getStatusLabel(status) {
+  if (status === "finished") return "Finalizado";
+  if (status === "active") return "Em andamento";
+  return "Inscrições";
+}
+
 function normalizeSearchText(value) {
   return String(value ?? "")
     .normalize("NFD")
@@ -417,6 +463,11 @@ function getNextAttemptNumber(playerId, attempts, limit) {
 function HanoiTournament({ onBack }) {
   const [state, setState] = useState(loadState);
   const [archives, setArchives] = useState(loadArchives);
+  const [showTournamentManager, setShowTournamentManager] = useState(true);
+  const [managerStatusFilter, setManagerStatusFilter] = useState("all");
+  const [isConfigEditing, setIsConfigEditing] = useState(false);
+  const [isNewTournament, setIsNewTournament] = useState(false);
+  const [configBackup, setConfigBackup] = useState(null);
   const [activeTab, setActiveTab] = useState("setup");
   const [namesText, setNamesText] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
@@ -508,6 +559,54 @@ function HanoiTournament({ onBack }) {
     });
   }, [archives, archiveSearch]);
 
+  const managerItems = useMemo(() => {
+    const currentItems =
+      state.isSaved ||
+      state.players.length > 0 ||
+      state.attempts.length > 0 ||
+      isNewTournament
+        ? [
+            {
+              id: "current",
+              kind: "current",
+              savedAt: null,
+              tournament: state
+            }
+          ]
+        : [];
+    const items = [
+      ...currentItems,
+      ...archives.map((archive) => ({
+        id: archive.id,
+        kind: "archive",
+        savedAt: archive.archivedAt,
+        tournament: archive.tournament,
+        archive
+      }))
+    ];
+    const search = normalizeSearchText(archiveSearch);
+
+    return items.filter((item) => {
+      const statusMatches =
+        managerStatusFilter === "all" ||
+        item.tournament.status === managerStatusFilter;
+      if (!statusMatches) return false;
+      if (!search) return true;
+
+      const searchableValues = [
+        item.tournament.tournamentName,
+        item.tournament.schoolName,
+        item.tournament.location,
+        item.tournament.eventDate,
+        ...item.tournament.players.map((player) => player.name)
+      ];
+
+      return searchableValues.some((value) =>
+        normalizeSearchText(value).includes(search)
+      );
+    });
+  }, [state, archives, archiveSearch, managerStatusFilter, isNewTournament]);
+
   const selectedArchive = archives.find(
     (archive) => archive.id === selectedArchiveId
   );
@@ -560,6 +659,7 @@ function HanoiTournament({ onBack }) {
 
   function hasTournamentData(tournamentState = state) {
     return (
+      tournamentState.isSaved ||
       tournamentState.players.length > 0 ||
       tournamentState.attempts.length > 0
     );
@@ -569,6 +669,11 @@ function HanoiTournament({ onBack }) {
     return {
       ...defaultState,
       schoolName: state.schoolName,
+      eventDate: getLocalDateInputValue(),
+      eventTime: "",
+      location: "",
+      notes: "",
+      status: "registration",
       disks: state.disks,
       attemptsPerPlayer: state.attemptsPerPlayer,
       timeLimitSeconds: state.timeLimitSeconds,
@@ -598,6 +703,10 @@ function HanoiTournament({ onBack }) {
     setMovesInput("");
     resetStopwatch();
     setActiveTab(destinationTab);
+    setShowTournamentManager(false);
+    setIsConfigEditing(true);
+    setIsNewTournament(true);
+    setConfigBackup(null);
     return true;
   }
 
@@ -617,7 +726,7 @@ function HanoiTournament({ onBack }) {
     URL.revokeObjectURL(url);
   }
 
-  function resumeArchivedTournament(archive) {
+  function resumeArchivedTournament(archive, edit = false) {
     const currentWillBeArchived = hasTournamentData();
     const confirmResume = confirm(
       currentWillBeArchived
@@ -640,7 +749,13 @@ function HanoiTournament({ onBack }) {
     setState(resumedState);
     setSelectedPlayerId(resumedState.players[0]?.id || "");
     setSelectedArchiveId("");
-    setActiveTab("attempts");
+    setActiveTab("setup");
+    setShowTournamentManager(false);
+    setIsConfigEditing(edit);
+    setIsNewTournament(false);
+    setConfigBackup(
+      edit ? JSON.parse(JSON.stringify(resumedState)) : null
+    );
   }
 
   function deleteArchivedTournament(archive) {
@@ -655,6 +770,95 @@ function HanoiTournament({ onBack }) {
     setSelectedArchiveId("");
   }
 
+  function openCurrentTournament(edit = false) {
+    setShowTournamentManager(false);
+    setActiveTab("setup");
+    setIsConfigEditing(edit);
+    setIsNewTournament(false);
+    setConfigBackup(edit ? JSON.parse(JSON.stringify(state)) : null);
+  }
+
+  function beginConfigurationEdit() {
+    setConfigBackup(JSON.parse(JSON.stringify(state)));
+    setIsConfigEditing(true);
+  }
+
+  function saveTournamentConfiguration() {
+    if (!state.tournamentName.trim()) {
+      alert("Digite um nome para o torneio.");
+      return;
+    }
+
+    if (!state.eventDate) {
+      alert("Informe a data do torneio.");
+      return;
+    }
+
+    updateState({ ...state, isSaved: true });
+    setIsConfigEditing(false);
+    setIsNewTournament(false);
+    setConfigBackup(null);
+  }
+
+  function cancelConfigurationEdit() {
+    if (isNewTournament && !state.isSaved) {
+      const confirmCancel = confirm(
+        "Cancelar a criação deste torneio? Os dados ainda não salvos serão descartados."
+      );
+      if (!confirmCancel) return;
+
+      setState(createFreshTournament());
+      setIsNewTournament(false);
+      setIsConfigEditing(false);
+      setConfigBackup(null);
+      setShowTournamentManager(true);
+      return;
+    }
+
+    if (configBackup) {
+      setState(normalizeTournamentState(configBackup));
+    }
+    setIsConfigEditing(false);
+    setConfigBackup(null);
+  }
+
+  function finalizeCurrentTournament() {
+    const confirmFinish = confirm(
+      "Finalizar este torneio? Os resultados continuarão disponíveis e ele poderá ser reaberto depois."
+    );
+    if (!confirmFinish) return;
+    updateState({ ...state, status: "finished", isSaved: true });
+  }
+
+  function reopenCurrentTournament() {
+    const nextStatus = state.attempts.length > 0 ? "active" : "registration";
+    updateState({ ...state, status: nextStatus, isSaved: true });
+  }
+
+  function deleteCurrentTournament() {
+    const confirmDelete = confirm(
+      `Excluir definitivamente o torneio “${state.tournamentName}”? Exporte uma cópia antes, caso queira guardá-lo.`
+    );
+    if (!confirmDelete) return;
+
+    setState(createFreshTournament());
+    setSelectedPlayerId("");
+    setIsConfigEditing(false);
+    setIsNewTournament(false);
+    setConfigBackup(null);
+    setShowTournamentManager(true);
+  }
+
+  function returnToTournamentManager() {
+    if (isNewTournament && !state.isSaved) {
+      cancelConfigurationEdit();
+      return;
+    }
+    setIsConfigEditing(false);
+    setConfigBackup(null);
+    setShowTournamentManager(true);
+  }
+
   function getNamesFromInput() {
     return namesText
       .split("\n")
@@ -663,6 +867,11 @@ function HanoiTournament({ onBack }) {
   }
 
   function addPlayers() {
+    if (state.status === "finished") {
+      alert("Reabra o torneio antes de adicionar participantes.");
+      return;
+    }
+
     const names = getNamesFromInput();
 
     if (names.length === 0) {
@@ -697,7 +906,8 @@ function HanoiTournament({ onBack }) {
 
     updateState((previous) => ({
       ...previous,
-      players: [...previous.players, ...newPlayers]
+      players: [...previous.players, ...newPlayers],
+      isSaved: true
     }));
 
     setNamesText("");
@@ -710,6 +920,33 @@ function HanoiTournament({ onBack }) {
         `${namesToAdd.length} participante(s) adicionado(s). ${skipped} nome(s) repetido(s) foram ignorados.`
       );
     }
+  }
+
+  function removeParticipant(player) {
+    const playerAttempts = getPlayerAttempts(player.id, state.attempts);
+    const message =
+      playerAttempts.length > 0
+        ? `Remover ${player.name}? As ${playerAttempts.length} tentativa(s) desse participante também serão apagadas.`
+        : `Remover ${player.name} da lista de participantes?`;
+
+    if (!confirm(message)) return;
+
+    updateState((previous) => {
+      const players = previous.players.filter((item) => item.id !== player.id);
+      const attempts = previous.attempts.filter(
+        (attempt) => attempt.playerId !== player.id
+      );
+
+      return {
+        ...previous,
+        players,
+        attempts,
+        status: attempts.length > 0 ? "active" : "registration",
+        isSaved: true
+      };
+    });
+
+    if (selectedPlayerId === player.id) setSelectedPlayerId("");
   }
 
   function replacePlayers() {
@@ -779,6 +1016,11 @@ function HanoiTournament({ onBack }) {
   }
 
   function registerAttempt(statusType = "valid") {
+    if (state.status === "finished") {
+      alert("Este torneio está finalizado. Reabra-o antes de registrar tentativas.");
+      return;
+    }
+
     if (!selectedPlayerId) {
       alert("Selecione um aluno.");
       return;
@@ -844,10 +1086,21 @@ function HanoiTournament({ onBack }) {
       createdAt: new Date().toISOString()
     };
 
-    updateState((previous) => ({
-      ...previous,
-      attempts: [...previous.attempts, newAttempt]
-    }));
+    updateState((previous) => {
+      const attempts = [...previous.attempts, newAttempt];
+      const totalExpected =
+        previous.players.length * Number(previous.attemptsPerPlayer || 0);
+
+      return {
+        ...previous,
+        attempts,
+        status:
+          totalExpected > 0 && attempts.length >= totalExpected
+            ? "finished"
+            : "active",
+        isSaved: true
+      };
+    });
 
     setMinutesInput("");
     setSecondsInput("");
@@ -863,6 +1116,11 @@ function HanoiTournament({ onBack }) {
   }
 
   function restoreAttempt(attemptId) {
+    if (state.status === "finished") {
+      alert("Reabra o torneio antes de restituir uma tentativa.");
+      return;
+    }
+
     const confirmRemove = confirm(
       "Restituir esta tentativa? O registro será apagado e o participante poderá refazê-la."
     );
@@ -871,7 +1129,9 @@ function HanoiTournament({ onBack }) {
 
     updateState((previous) => ({
       ...previous,
-      attempts: previous.attempts.filter((attempt) => attempt.id !== attemptId)
+      attempts: previous.attempts.filter((attempt) => attempt.id !== attemptId),
+      status: "active",
+      isSaved: true
     }));
   }
 
@@ -897,6 +1157,10 @@ function HanoiTournament({ onBack }) {
     setMovesInput("");
     resetStopwatch();
     setActiveTab("setup");
+    setShowTournamentManager(false);
+    setIsConfigEditing(true);
+    setIsNewTournament(true);
+    setConfigBackup(null);
   }
 
   function exportTournament() {
@@ -948,6 +1212,10 @@ function HanoiTournament({ onBack }) {
         }
 
         setActiveTab("setup");
+        setShowTournamentManager(false);
+        setIsConfigEditing(false);
+        setIsNewTournament(false);
+        setConfigBackup(null);
         alert("Torneio importado com sucesso!");
       } catch (error) {
         alert(
@@ -963,6 +1231,198 @@ function HanoiTournament({ onBack }) {
     };
 
     reader.readAsText(file);
+  }
+
+  if (showTournamentManager) {
+    return (
+      <div className="app hanoi-theme tournament-manager-screen">
+        <div className="bg-board"></div>
+
+        <header className="hero">
+          <div>
+            <p className="eyebrow">Torre de Hanói</p>
+            <h1 className="title-with-icon">
+              <HanoiIcon size={70} />
+              Meus torneios
+            </h1>
+            <p className="subtitle">
+              Crie, encontre, edite e retome qualquer edição.
+            </p>
+          </div>
+
+          <div className="hero-actions">
+            <button className="ghost" onClick={onBack}>
+              <ArrowLeft size={18} />
+              Menu
+            </button>
+            <button
+              className="primary"
+              onClick={() => archiveCurrentAndStartNew([], "setup")}
+            >
+              <Plus size={18} />
+              Novo torneio
+            </button>
+            <label className="ghost import-file-button">
+              <Upload size={18} />
+              Importar
+              <input
+                type="file"
+                accept="application/json"
+                onChange={importTournament}
+                hidden
+              />
+            </label>
+          </div>
+        </header>
+
+        <main className="panel unified-tournament-manager">
+          <div className="manager-toolbar">
+            <div>
+              <h2>Torneios de Hanoi</h2>
+              <p>
+                Todas as edições ficam reunidas aqui, inclusive as finalizadas.
+              </p>
+            </div>
+            <div className="archive-search manager-search">
+              <Search size={19} />
+              <input
+                value={archiveSearch}
+                onChange={(event) => setArchiveSearch(event.target.value)}
+                placeholder="Buscar torneio ou participante"
+              />
+            </div>
+          </div>
+
+          <div className="manager-status-filters" aria-label="Filtrar por status">
+            {[
+              ["all", "Todos"],
+              ["registration", "Inscrições"],
+              ["active", "Em andamento"],
+              ["finished", "Finalizados"]
+            ].map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={managerStatusFilter === value ? "active" : ""}
+                onClick={() => setManagerStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {managerItems.length === 0 ? (
+            <div className="empty manager-empty">
+              <Archive size={32} />
+              <strong>Nenhum torneio encontrado</strong>
+              <span>
+                {archiveSearch || managerStatusFilter !== "all"
+                  ? "Altere a busca ou os filtros."
+                  : "Clique em Novo torneio para criar a primeira edição."}
+              </span>
+            </div>
+          ) : (
+            <div className="archive-card-grid manager-card-grid">
+              {managerItems.map((item) => {
+                const tournament = item.tournament;
+                const tournamentRanking = getTournamentRanking(tournament);
+                const winner = tournamentRanking.find((player) =>
+                  getBestAttempt(
+                    player.id,
+                    tournament.attempts,
+                    tournament.rankingMode
+                  )
+                );
+
+                return (
+                  <article className="archive-card manager-tournament-card" key={item.id}>
+                    <div className="archive-card-top">
+                      <span className={`status-${tournament.status}`}>
+                        {getStatusLabel(tournament.status)}
+                      </span>
+                      {item.kind === "current" && <small>Aberto por último</small>}
+                    </div>
+
+                    <h3>{tournament.tournamentName}</h3>
+                    <p className="manager-card-date">
+                      <Clock size={15} />
+                      {formatEventDate(tournament.eventDate)}
+                      {tournament.eventTime ? ` às ${tournament.eventTime}` : ""}
+                    </p>
+                    {tournament.location && (
+                      <p className="manager-card-location">{tournament.location}</p>
+                    )}
+
+                    <div className="manager-card-metrics">
+                      <span><Users size={16} /> {tournament.players.length}</span>
+                      <span><Layers size={16} /> {tournament.disks} discos</span>
+                      <span><Timer size={16} /> {tournament.attempts.length}</span>
+                    </div>
+
+                    <div className="archive-card-result">
+                      <Trophy size={17} />
+                      <span>
+                        {winner ? `1º lugar: ${winner.name}` : "Sem classificação ainda"}
+                      </span>
+                    </div>
+
+                    <div className="manager-card-actions">
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={() =>
+                          item.kind === "current"
+                            ? openCurrentTournament(false)
+                            : resumeArchivedTournament(item.archive, false)
+                        }
+                      >
+                        <FolderOpen size={17} />
+                        Abrir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          item.kind === "current"
+                            ? openCurrentTournament(true)
+                            : resumeArchivedTournament(item.archive, true)
+                        }
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        title="Exportar cópia"
+                        aria-label={`Exportar ${tournament.tournamentName}`}
+                        onClick={() =>
+                          item.kind === "current"
+                            ? exportTournament()
+                            : exportArchivedTournament(item.archive)
+                        }
+                      >
+                        <Download size={17} />
+                      </button>
+                      <button
+                        type="button"
+                        className="manager-delete-button"
+                        title="Excluir torneio"
+                        aria-label={`Excluir ${tournament.tournamentName}`}
+                        onClick={() =>
+                          item.kind === "current"
+                            ? deleteCurrentTournament()
+                            : deleteArchivedTournament(item.archive)
+                        }
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -982,9 +1442,9 @@ function HanoiTournament({ onBack }) {
         </div>
 
         <div className="hero-actions">
-          <button className="ghost" onClick={onBack}>
+          <button className="ghost" onClick={returnToTournamentManager}>
             <ArrowLeft size={18} />
-            Menu
+            Meus torneios
           </button>
 
           <button className="ghost" onClick={resetTournament}>
@@ -1034,7 +1494,7 @@ function HanoiTournament({ onBack }) {
         <div className="stat">
           <Trophy />
           <span>Status</span>
-          <strong>{tournamentFinished ? "Fim" : "Ativo"}</strong>
+          <strong>{getStatusLabel(state.status)}</strong>
         </div>
       </section>
 
@@ -1044,7 +1504,6 @@ function HanoiTournament({ onBack }) {
           ["attempts", "Tentativas"],
           ["ranking", "Ranking"],
           ["history", "Histórico"],
-          ["archives", "Torneios salvos"],
           ["rules", "Regras"]
         ].map(([id, label]) => (
           <button
@@ -1290,32 +1749,127 @@ function HanoiTournament({ onBack }) {
       )}
 
       {activeTab === "setup" && (
-        <main className="grid two">
+        <main className="grid two tournament-registration-grid">
+          <section className="panel tournament-form-toolbar">
+            <div>
+              <span className={`tournament-status status-${state.status}`}>
+                {getStatusLabel(state.status)}
+              </span>
+              <h2>{isNewTournament ? "Inscrição do novo torneio" : "Dados do torneio"}</h2>
+              <p>
+                {isConfigEditing
+                  ? "Preencha ou corrija os dados e salve as alterações."
+                  : "As informações estão protegidas. Clique em Editar para alterá-las."}
+              </p>
+            </div>
+            <div className="tournament-form-actions">
+              {isConfigEditing ? (
+                <>
+                  <button className="primary" onClick={saveTournamentConfiguration}>
+                    <Save size={18} />
+                    Salvar torneio
+                  </button>
+                  <button onClick={cancelConfigurationEdit}>Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <button className="primary" onClick={beginConfigurationEdit}>
+                    Editar torneio
+                  </button>
+                  {state.status === "finished" ? (
+                    <button onClick={reopenCurrentTournament}>Reabrir torneio</button>
+                  ) : (
+                    <button onClick={finalizeCurrentTournament}>Finalizar torneio</button>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+
           <section className="panel">
-            <h2>1. Dados do torneio</h2>
+            <h2>1. Identificação</h2>
 
             <label>Nome do torneio</label>
             <input
               value={state.tournamentName}
+              disabled={!isConfigEditing}
               onChange={(event) =>
-                updateState({
-                  ...state,
-                  tournamentName: event.target.value
-                })
+                updateState({ ...state, tournamentName: event.target.value })
               }
             />
 
             <label>Escola</label>
             <input
               value={state.schoolName}
+              disabled={!isConfigEditing}
               onChange={(event) =>
-                updateState({
-                  ...state,
-                  schoolName: event.target.value
-                })
+                updateState({ ...state, schoolName: event.target.value })
               }
               placeholder="Ex: EEMTI..."
             />
+
+            <div className="event-date-grid">
+              <div>
+                <label>Data</label>
+                <input
+                  type="date"
+                  value={state.eventDate}
+                  disabled={!isConfigEditing}
+                  onChange={(event) =>
+                    updateState({ ...state, eventDate: event.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label>Horário — opcional</label>
+                <input
+                  type="time"
+                  value={state.eventTime}
+                  disabled={!isConfigEditing}
+                  onChange={(event) =>
+                    updateState({ ...state, eventTime: event.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <label>Local — opcional</label>
+            <input
+              value={state.location}
+              disabled={!isConfigEditing}
+              onChange={(event) =>
+                updateState({ ...state, location: event.target.value })
+              }
+              placeholder="Ex: Laboratório de Ciências"
+            />
+
+            <label>Observações — opcional</label>
+            <textarea
+              className="tournament-notes"
+              value={state.notes}
+              disabled={!isConfigEditing}
+              onChange={(event) =>
+                updateState({ ...state, notes: event.target.value })
+              }
+              placeholder="Informações importantes sobre esta edição"
+            />
+
+            <label>Status</label>
+            <select
+              value={state.status}
+              disabled={!isConfigEditing}
+              onChange={(event) =>
+                updateState({ ...state, status: event.target.value })
+              }
+            >
+              <option value="registration">Inscrições</option>
+              <option value="active">Em andamento</option>
+              <option value="finished">Finalizado</option>
+            </select>
+          </section>
+
+          <section className="panel">
+            <h2>2. Regras da edição</h2>
 
             <label>Número de discos</label>
             <input
@@ -1323,41 +1877,33 @@ function HanoiTournament({ onBack }) {
               min="3"
               max="8"
               value={state.disks}
-              disabled={state.attempts.length > 0}
+              disabled={!isConfigEditing || state.attempts.length > 0}
               title={
                 state.attempts.length > 0
-                  ? "Reinicie o torneio para alterar o número de discos."
+                  ? "O número de discos fica bloqueado depois da primeira tentativa."
                   : undefined
               }
               onChange={(event) =>
-                updateState({
-                  ...state,
-                  disks: Number(event.target.value)
-                })
+                updateState({ ...state, disks: Number(event.target.value) })
               }
             />
 
             <p className="hint">
-              Mínimo ideal de movimentos: {minimumMoves(state.disks)}.
+              Mínimo ideal: {minimumMoves(state.disks)} movimentos.
               {state.attempts.length > 0 && (
-                <>
-                  {" "}O número de discos fica bloqueado após a primeira
-                  tentativa.
-                </>
+                <> O número de discos está protegido para não misturar desafios diferentes no mesmo ranking.</>
               )}
             </p>
 
-            <label>Tentativas por aluno</label>
+            <label>Tentativas por participante</label>
             <input
               type="number"
               min="1"
               max="10"
               value={state.attemptsPerPlayer}
+              disabled={!isConfigEditing}
               onChange={(event) =>
-                updateState({
-                  ...state,
-                  attemptsPerPlayer: Number(event.target.value)
-                })
+                updateState({ ...state, attemptsPerPlayer: Number(event.target.value) })
               }
             />
 
@@ -1369,9 +1915,8 @@ function HanoiTournament({ onBack }) {
                   min="0"
                   step="1"
                   value={Math.floor(Number(state.timeLimitSeconds || 0) / 60)}
-                  onChange={(event) =>
-                    updateTimeLimitPart("minutes", event.target.value)
-                  }
+                  disabled={!isConfigEditing}
+                  onChange={(event) => updateTimeLimitPart("minutes", event.target.value)}
                 />
                 <small>minutos</small>
               </div>
@@ -1383,27 +1928,23 @@ function HanoiTournament({ onBack }) {
                   max="59"
                   step="1"
                   value={Number(state.timeLimitSeconds || 0) % 60}
-                  onChange={(event) =>
-                    updateTimeLimitPart("seconds", event.target.value)
-                  }
+                  disabled={!isConfigEditing}
+                  onChange={(event) => updateTimeLimitPart("seconds", event.target.value)}
                 />
                 <small>segundos</small>
               </div>
             </div>
 
             <p className="hint">
-              É apenas uma referência. Se o participante ultrapassar esse
-              tempo, a tentativa continuará válida e entrará no ranking.
+              Ultrapassar a referência não gera DNF e não impede a classificação.
             </p>
 
             <label>Critério principal de ranking</label>
             <select
               value={state.rankingMode}
+              disabled={!isConfigEditing}
               onChange={(event) =>
-                updateState({
-                  ...state,
-                  rankingMode: event.target.value
-                })
+                updateState({ ...state, rankingMode: event.target.value })
               }
             >
               <option value="moves">Menor número de movimentos</option>
@@ -1411,44 +1952,77 @@ function HanoiTournament({ onBack }) {
             </select>
           </section>
 
-          <section className="panel">
-            <h2>2. Participantes</h2>
-
-            <p className="hint">
-              Digite um nome por linha e clique em importar.
-            </p>
-
-            <textarea
-              value={namesText}
-              onChange={(event) => setNamesText(event.target.value)}
-              placeholder={"Ana Clara\nBruno Silva\nCarlos Eduardo\nDavi\nEduarda"}
-              spellCheck="false"
-              autoCorrect="off"
-              autoCapitalize="words"
-            />
-
-            <div className="import-area">
-              <div className="participant-import-actions">
-                <button className="primary" onClick={addPlayers}>
-                  <Plus size={18} />
-                  Adicionar à lista atual
-                </button>
-                <button className="ghost" onClick={replacePlayers}>
-                  Arquivar atual e criar novo
-                </button>
+          <section className="panel tournament-participants-panel">
+            <div className="participants-config-head">
+              <div>
+                <h2>3. Participantes</h2>
+                <p className="hint">
+                  {state.players.length} participante(s) • {completedPlayers.length} concluinte(s)
+                </p>
               </div>
-
-              <p className="hint import-hint">
-                Lista atual: {state.players.length} participante(s) •{" "}
-                {completedPlayers.length} concluinte(s)
-              </p>
             </div>
+
+            {isConfigEditing && (
+              <>
+                <p className="hint">Digite somente os novos nomes, um por linha.</p>
+                <textarea
+                  value={namesText}
+                  onChange={(event) => setNamesText(event.target.value)}
+                  placeholder={"Ana Clara\nBruno Silva\nCarlos Eduardo"}
+                  spellCheck="false"
+                  autoCorrect="off"
+                  autoCapitalize="words"
+                />
+                <button className="primary full" onClick={addPlayers}>
+                  <Plus size={18} />
+                  Adicionar participantes
+                </button>
+              </>
+            )}
+
+            {state.players.length === 0 ? (
+              <div className="empty">Nenhum participante adicionado.</div>
+            ) : (
+              <div className="registration-player-list">
+                {state.players.map((player) => (
+                  <div key={player.id}>
+                    <span>{player.name}</span>
+                    <small>
+                      {getCompletedAttempts(player.id, state.attempts)}/{state.attemptsPerPlayer} tentativas
+                    </small>
+                    {isConfigEditing && (
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => removeParticipant(player)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </main>
       )}
 
       {activeTab === "attempts" && (
         <main className="grid two">
+          {state.status === "finished" && (
+            <section className="panel finished-tournament-banner">
+              <div>
+                <strong>Torneio finalizado</strong>
+                <p>
+                  Os resultados estão preservados. Reabra o torneio para
+                  registrar ou restituir tentativas.
+                </p>
+              </div>
+              <button className="primary" onClick={reopenCurrentTournament}>
+                Reabrir torneio
+              </button>
+            </section>
+          )}
           <section className="panel">
             <h2>
               <Timer size={24} />
@@ -1511,7 +2085,10 @@ function HanoiTournament({ onBack }) {
                           <button
                             type="button"
                             onClick={startStopwatch}
-                            disabled={nextAttempt > state.attemptsPerPlayer}
+                            disabled={
+                              state.status === "finished" ||
+                              nextAttempt > state.attemptsPerPlayer
+                            }
                           >
                             <Play size={17} />
                             Iniciar
@@ -1530,7 +2107,8 @@ function HanoiTournament({ onBack }) {
                           type="button"
                           onClick={useStopwatchTime}
                           disabled={
-                            stopwatchMilliseconds <= 0 && !stopwatchRunning
+                            state.status === "finished" ||
+                            (stopwatchMilliseconds <= 0 && !stopwatchRunning)
                           }
                         >
                           Usar tempo
@@ -1558,7 +2136,10 @@ function HanoiTournament({ onBack }) {
                             setMinutesInput(event.target.value)
                           }
                           placeholder="0"
-                          disabled={nextAttempt > state.attemptsPerPlayer}
+                          disabled={
+                            state.status === "finished" ||
+                            nextAttempt > state.attemptsPerPlayer
+                          }
                         />
                         <small>minutos</small>
                       </div>
@@ -1574,7 +2155,10 @@ function HanoiTournament({ onBack }) {
                             setSecondsInput(event.target.value)
                           }
                           placeholder="00.00"
-                          disabled={nextAttempt > state.attemptsPerPlayer}
+                          disabled={
+                            state.status === "finished" ||
+                            nextAttempt > state.attemptsPerPlayer
+                          }
                         />
                         <small>segundos</small>
                       </div>
@@ -1588,13 +2172,19 @@ function HanoiTournament({ onBack }) {
                       value={movesInput}
                       onChange={(event) => setMovesInput(event.target.value)}
                       placeholder={`Mínimo ideal: ${minimumMoves(state.disks)}`}
-                      disabled={nextAttempt > state.attemptsPerPlayer}
+                      disabled={
+                        state.status === "finished" ||
+                        nextAttempt > state.attemptsPerPlayer
+                      }
                     />
 
                     <div className="result-buttons">
                       <button
                         onClick={() => registerAttempt("valid")}
-                        disabled={nextAttempt > state.attemptsPerPlayer}
+                        disabled={
+                          state.status === "finished" ||
+                          nextAttempt > state.attemptsPerPlayer
+                        }
                       >
                         <Save size={18} />
                         Salvar tentativa
@@ -1602,7 +2192,10 @@ function HanoiTournament({ onBack }) {
 
                       <button
                         onClick={() => registerAttempt("dnf")}
-                        disabled={nextAttempt > state.attemptsPerPlayer}
+                        disabled={
+                          state.status === "finished" ||
+                          nextAttempt > state.attemptsPerPlayer
+                        }
                       >
                         Não concluiu (DNF)
                       </button>
@@ -1701,6 +2294,7 @@ function HanoiTournament({ onBack }) {
                           <button
                             className="danger"
                             onClick={() => restoreAttempt(attempt.id)}
+                            disabled={state.status === "finished"}
                           >
                             <Undo2 size={15} />
                             Restituir
